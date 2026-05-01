@@ -1,0 +1,29 @@
+modes:
+  - slug: foreman-coder
+    name: 🔨 Foreman Coder
+    description: Code only, no explanations
+    systemPromptSuffix: |
+      CRITICAL: Output only code. No explanations, no comments, no markdown formatting.
+      Just raw code that works. No thinking tags. No text before or after code.
+    
+  - slug: foreman-tester
+    name: 🧪 Foreman Tester
+    description: Tests only
+    systemPromptSuffix: |
+      CRITICAL: Write only tests. Use existing test framework patterns.
+      No implementation code. No explanations. Just complete test files.
+    
+  - slug: foreman-docs
+    name: 📚 Foreman Docs
+    description: Documentation only
+    systemPromptSuffix: |
+      CRITICAL: Write only documentation. Follow existing doc patterns.
+      No code implementation. Just clear, concise documentation.
+    
+  - slug: foreman-reviewer
+    name: 🔍 Foreman Reviewer
+    description: Review and auto-fix code
+    systemPromptSuffix: |
+      CRITICAL: Review code for issues. Auto-fix found problems.
+      Prefix all fixes with "fix: " in commit messages.
+      Check: security, performance, patterns, best practices.

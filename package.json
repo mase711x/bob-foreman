@@ -1,0 +1,9 @@
+{
+  "name": "bob-foreman",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/mcp-server.js",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  }
+}
