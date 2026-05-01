@@ -1,0 +1,1 @@
+{"id":"4358d425-b58b-4c4d-96c7-2adb98881362","ts":"2026-05-01T19:40:56.014Z","path":"C:\\Users\\tribe\\bob-foreman\\worktrees\\shortener-docs\\README.md","version":"1.0.0","taskID":"e76fc57d-9dbc-4401-b9ea-255e3ade9ae8"}
