@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bob Foreman Live</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #0a0a0f;
+            color: #ffffff;
+            font-family: Consolas, monospace;
+            padding: 20px;
+        }
+
+        .header {
+            margin-bottom: 30px;
+            padding: 20px;
+            border-bottom: 2px solid #333;
+        }
+
+        .title {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .header-stats {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        .comparison {
+            margin-top: 20px;
+        }
+
+        .comparison-label {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .comparison-bars {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .comparison-bar {
+            flex: 1;
+            height: 40px;
+            background-color: #1a1a1f;
+            border-radius: 5px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .comparison-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .comparison-sequential .comparison-fill {
+            background-color: #ff6b6b;
+        }
+
+        .comparison-parallel .comparison-fill {
+            background-color: #51cf66;
+        }
+
+        .workers-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .worker-card {
+            background-color: #1a1a1f;
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 4px solid;
+        }
+
+        .worker-card.accent-cyan {
+            border-left-color: #00ffff;
+        }
+
+        .worker-card.accent-magenta {
+            border-left-color: #ff00ff;
+        }
+
+        .worker-card.accent-lime {
+            border-left-color: #00ff00;
+        }
+
+        .worker-card.accent-orange {
+            border-left-color: #ff8800;
+        }
+
+        .worker-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .task-id {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .status-badge {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status-queued {
+            background-color: #666;
+        }
+
+        .status-running {
+            background-color: #ffd700;
+            color: #000;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .status-done {
+            background-color: #51cf66;
+            color: #000;
+        }
+
+        .status-error {
+            background-color: #ff6b6b;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.6;
+            }
+        }
+
+        .log-box {
+            background-color: #0a0a0f;
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 10px;
+            height: 200px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .log-line {
+            margin-bottom: 2px;
+            word-wrap: break-word;
+        }
+
+        .coin-counter {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .coin-value {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #0a0a0f;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #333;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4a9eff, #00d4ff);
+            transition: width 0.3s ease;
+        }
+
+        .offline-banner {
+            background-color: #ff6b6b;
+            color: #fff;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .offline-banner.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-banner" id="offlineBanner">
+        ⚠️ OFFLINE - Unable to fetch status data
+    </div>
+
+    <div class="header">
+        <div class="title">Bob Foreman Live</div>
+        
+        <div class="header-stats">
+            <div class="stat">
+                <div class="stat-label">Total Bobcoins</div>
+                <div class="stat-value" id="totalCoins">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Elapsed Time</div>
+                <div class="stat-value" id="elapsedTime">00:00:00</div>
+            </div>
+        </div>
+
+        <div class="comparison">
+            <div class="comparison-label">Sequential vs Parallel</div>
+            <div class="comparison-bars">
+                <div class="comparison-bar comparison-sequential">
+                    <div class="comparison-fill" style="width: 100%;">Sequential 9h</div>
+                </div>
+                <div class="comparison-bar comparison-parallel">
+                    <div class="comparison-fill" style="width: 33.33%;">Parallel 3h</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="workers-grid">
+        <div class="worker-card accent-cyan" data-worker="0">
+            <div class="worker-header">
+                <div class="task-id" id="taskId0">Task #1</div>
+                <div class="status-badge status-queued" id="status0">Queued</div>
+            </div>
+            <div class="log-box" id="logs0"></div>
+            <div class="coin-counter">
+                <span>Bobcoins:</span>
+                <span class="coin-value" id="coins0">0</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress0" style="width: 0%;"></div>
+            </div>
+        </div>
+
+        <div class="worker-card accent-magenta" data-worker="1">
+            <div class="worker-header">
+                <div class="task-id" id="taskId1">Task #2</div>
+                <div class="status-badge status-queued" id="status1">Queued</div>
+            </div>
+            <div class="log-box" id="logs1"></div>
+            <div class="coin-counter">
+                <span>Bobcoins:</span>
+                <span class="coin-value" id="coins1">0</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress1" style="width: 0%;"></div>
+            </div>
+        </div>
+
+        <div class="worker-card accent-lime" data-worker="2">
+            <div class="worker-header">
+                <div class="task-id" id="taskId2">Task #3</div>
+                <div class="status-badge status-queued" id="status2">Queued</div>
+            </div>
+            <div class="log-box" id="logs2"></div>
+            <div class="coin-counter">
+                <span>Bobcoins:</span>
+                <span class="coin-value" id="coins2">0</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress2" style="width: 0%;"></div>
+            </div>
+        </div>
+
+        <div class="worker-card accent-orange" data-worker="3">
+            <div class="worker-header">
+                <div class="task-id" id="taskId3">Task #4</div>
+                <div class="status-badge status-queued" id="status3">Queued</div>
+            </div>
+            <div class="log-box" id="logs3"></div>
+            <div class="coin-counter">
+                <span>Bobcoins:</span>
+                <span class="coin-value" id="coins3">0</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress3" style="width: 0%;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const MAX_COINS = 100;
+        let startTime = Date.now();
+        let isOffline = false;
+
+        function updateElapsedTime() {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const hours = Math.floor(elapsed / 3600);
+            const minutes = Math.floor((elapsed % 3600) / 60);
+            const seconds = elapsed % 60;
+            
+            document.getElementById('elapsedTime').textContent = 
+                `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        function updateWorkerCard(workerIndex, workerData) {
+            const taskId = workerData.taskId || `Task #${workerIndex + 1}`;
+            const status = workerData.status || 'queued';
+            const logs = workerData.logs || [];
+            const coins = workerData.coins || 0;
+
+            document.getElementById(`taskId${workerIndex}`).textContent = taskId;
+            
+            const statusBadge = document.getElementById(`status${workerIndex}`);
+            statusBadge.textContent = status;
+            statusBadge.className = `status-badge status-${status}`;
+
+            const logsContainer = document.getElementById(`logs${workerIndex}`);
+            const lastLogs = logs.slice(-10);
+            logsContainer.innerHTML = lastLogs.map(log => 
+                `<div class="log-line">${escapeHtml(log)}</div>`
+            ).join('');
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+
+            document.getElementById(`coins${workerIndex}`).textContent = coins;
+
+            const progressPercent = (coins / MAX_COINS) * 100;
+            document.getElementById(`progress${workerIndex}`).style.width = `${progressPercent}%`;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function fetchStatus() {
+            try {
+                const response = await fetch('/dashboard/status.json');
+                if (!response.ok) throw new Error('Fetch failed');
+                
+                const data = await response.json();
+                
+                if (isOffline) {
+                    isOffline = false;
+                    document.getElementById('offlineBanner').classList.remove('show');
+                }
+
+                let totalCoins = 0;
+                const workers = data.workers || [];
+                
+                for (let i = 0; i < 4; i++) {
+                    const workerData = workers[i] || {};
+                    updateWorkerCard(i, workerData);
+                    totalCoins += workerData.coins || 0;
+                }
+
+                document.getElementById('totalCoins').textContent = totalCoins;
+
+            } catch (error) {
+                if (!isOffline) {
+                    isOffline = true;
+                    document.getElementById('offlineBanner').classList.add('show');
+                }
+            }
+        }
+
+        setInterval(updateElapsedTime, 1000);
+        setInterval(fetchStatus, 1000);
+        
+        updateElapsedTime();
+        fetchStatus();
+    </script>
+</body>
+</html>
