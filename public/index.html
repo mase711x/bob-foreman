@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Shortener</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #0a0a0f;
+            color: #ffffff;
+            font-family: 'Courier New', monospace;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #00d4ff;
+            margin-bottom: 2rem;
+            text-align: center;
+            font-size: 2.5rem;
+        }
+
+        .form-section {
+            background-color: #1a1a1f;
+            padding: 2rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            border: 1px solid #00d4ff;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 0.75rem;
+            background-color: #0a0a0f;
+            border: 1px solid #00d4ff;
+            color: #ffffff;
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+            border-radius: 4px;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            background-color: #00d4ff;
+            color: #0a0a0f;
+            border: none;
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background-color: #00b8e6;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .result {
+            display: none;
+            background-color: #0a0a0f;
+            padding: 1rem;
+            border-radius: 4px;
+            border: 1px solid #00d4ff;
+        }
+
+        .result.show {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .result-url {
+            flex: 1;
+            color: #00d4ff;
+            word-break: break-all;
+        }
+
+        .error {
+            color: #ff4444;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .history-section {
+            background-color: #1a1a1f;
+            padding: 2rem;
+            border-radius: 8px;
+            border: 1px solid #00d4ff;
+        }
+
+        h2 {
+            color: #00d4ff;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+
+        .history-list {
+            list-style: none;
+        }
+
+        .history-item {
+            background-color: #0a0a0f;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 4px;
+            border: 1px solid #333;
+            transition: border-color 0.3s;
+        }
+
+        .history-item:hover {
+            border-color: #00d4ff;
+        }
+
+        .history-original {
+            color: #888;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            word-break: break-all;
+        }
+
+        .history-short {
+            color: #00d4ff;
+            cursor: pointer;
+            text-decoration: underline;
+            margin-bottom: 0.5rem;
+            display: inline-block;
+        }
+
+        .history-short:hover {
+            color: #00b8e6;
+        }
+
+        .stats {
+            display: none;
+            color: #888;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .stats.show {
+            display: block;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #666;
+            padding: 2rem;
+        }
+
+        .loading {
+            display: none;
+            color: #00d4ff;
+            font-size: 0.9rem;
+        }
+
+        .loading.show {
+            display: inline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>URL Shortener</h1>
+        
+        <div class="form-section">
+            <form id="shortenForm">
+                <div class="input-group">
+                    <input 
+                        type="text" 
+                        id="urlInput" 
+                        placeholder="Enter URL to shorten..." 
+                        required
+                    >
+                    <button type="submit">Shorten</button>
+                </div>
+                <div class="result" id="result">
+                    <span class="result-url" id="resultUrl"></span>
+                    <button type="button" id="copyBtn">Copy</button>
+                </div>
+                <div class="error" id="error"></div>
+            </form>
+        </div>
+
+        <div class="history-section">
+            <h2>Recent Shortenings</h2>
+            <ul class="history-list" id="historyList">
+                <li class="empty-state">No shortenings yet</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'url_shortener_history';
+        const MAX_HISTORY = 10;
+
+        function getHistory() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            return stored ? JSON.parse(stored) : [];
+        }
+
+        function saveHistory(history) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+        }
+
+        function addToHistory(original, shortened) {
+            const history = getHistory();
+            history.unshift({ original, shortened, timestamp: Date.now() });
+            if (history.length > MAX_HISTORY) {
+                history.pop();
+            }
+            saveHistory(history);
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const historyList = document.getElementById('historyList');
+            const history = getHistory();
+
+            if (history.length === 0) {
+                historyList.innerHTML = '<li class="empty-state">No shortenings yet</li>';
+                return;
+            }
+
+            historyList.innerHTML = history.map((item, index) => `
+                <li class="history-item">
+                    <div class="history-original">${escapeHtml(item.original)}</div>
+                    <span class="history-short" data-url="${escapeHtml(item.shortened)}" data-index="${index}">
+                        ${escapeHtml(item.shortened)}
+                    </span>
+                    <div class="stats" id="stats-${index}">
+                        <span class="loading">Loading stats...</span>
+                    </div>
+                </li>
+            `).join('');
+
+            document.querySelectorAll('.history-short').forEach(el => {
+                el.addEventListener('click', handleStatsClick);
+            });
+        }
+
+        async function handleStatsClick(e) {
+            const url = e.target.dataset.url;
+            const index = e.target.dataset.index;
+            const statsDiv = document.getElementById(`stats-${index}`);
+            
+            const code = url.split('/').pop();
+            
+            statsDiv.classList.add('show');
+            statsDiv.innerHTML = '<span class="loading show">Loading stats...</span>';
+
+            try {
+                const response = await fetch(`/api/stats/${code}`);
+                if (!response.ok) throw new Error('Failed to fetch stats');
+                
+                const data = await response.json();
+                statsDiv.innerHTML = `Clicks: ${data.clicks || 0}`;
+            } catch (error) {
+                statsDiv.innerHTML = `Error loading stats`;
+                console.error('Stats error:', error);
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showResult(url) {
+            const resultDiv = document.getElementById('result');
+            const resultUrl = document.getElementById('resultUrl');
+            resultUrl.textContent = url;
+            resultDiv.classList.add('show');
+        }
+
+        function hideResult() {
+            document.getElementById('result').classList.remove('show');
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+        }
+
+        function hideError() {
+            document.getElementById('error').classList.remove('show');
+        }
+
+        document.getElementById('shortenForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const urlInput = document.getElementById('urlInput');
+            const url = urlInput.value.trim();
+            
+            hideError();
+            hideResult();
+
+            try {
+                const response = await fetch('/shorten', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ url })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to shorten URL');
+                }
+
+                const data = await response.json();
+                const shortUrl = data.shortUrl || data.short_url || data.url;
+                
+                showResult(shortUrl);
+                addToHistory(url, shortUrl);
+                urlInput.value = '';
+            } catch (error) {
+                showError(error.message);
+                console.error('Shorten error:', error);
+            }
+        });
+
+        document.getElementById('copyBtn').addEventListener('click', () => {
+            const resultUrl = document.getElementById('resultUrl').textContent;
+            navigator.clipboard.writeText(resultUrl).then(() => {
+                const btn = document.getElementById('copyBtn');
+                const originalText = btn.textContent;
+                btn.textContent = 'Copied!';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
+            }).catch(err => {
+                console.error('Copy failed:', err);
+            });
+        });
+
+        renderHistory();
+    </script>
+</body>
+</html>
