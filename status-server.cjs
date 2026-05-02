@@ -52,45 +52,19 @@ function getFileModTime(filePath) {
   }
 }
 
-// Helper function to extract coins from log JSON
-// Parses sessionCost from Bob CLI output (stats.sessionCost field)
-function extractCoins(logData) {
-  if (!logData) return 0;
-  
-  // Check for sessionCost in stats object (Bob CLI standard output)
-  if (logData.stats && typeof logData.stats.sessionCost === 'number') {
-    return logData.stats.sessionCost;
+// Helper function to extract coins from Bob CLI log file (raw text)
+// Bob CLI writes plaintext output with embedded `"sessionCost": N.NNN` strings,
+// not valid JSON. We sum all sessionCost matches found in the raw text.
+function extractCoinsFromRaw(rawText) {
+  if (!rawText || typeof rawText !== 'string') return 0;
+  const re = /"sessionCost":\s*([\d.]+)/g;
+  let total = 0;
+  let m;
+  while ((m = re.exec(rawText)) !== null) {
+    const v = parseFloat(m[1]);
+    if (!isNaN(v)) total += v;
   }
-  
-  // Fallback: search for coin-related fields
-  if (logData.usage && typeof logData.usage.coins === 'number') {
-    return logData.usage.coins;
-  }
-  if (typeof logData.totalCost === 'number') {
-    return logData.totalCost;
-  }
-  if (typeof logData.coins === 'number') {
-    return logData.coins;
-  }
-  
-  // Search recursively in object
-  function searchCoins(obj) {
-    if (!obj || typeof obj !== 'object') return 0;
-    
-    for (const key in obj) {
-      const lowerKey = key.toLowerCase();
-      if ((lowerKey.includes('coin') || lowerKey.includes('cost')) && typeof obj[key] === 'number') {
-        return obj[key];
-      }
-      if (typeof obj[key] === 'object') {
-        const result = searchCoins(obj[key]);
-        if (result > 0) return result;
-      }
-    }
-    return 0;
-  }
-  
-  return searchCoins(logData);
+  return total;
 }
 
 // Helper function to get all task IDs
@@ -198,10 +172,15 @@ app.get('/dashboard/status.json', (req, res) => {
   const workers = taskIds.map(taskId => {
     const status = getWorkerStatus(taskId, rootDir);
     
-    // Get coins from logs/${taskId}.json
+    // Get coins from logs/${taskId}.json (raw plaintext from Bob CLI, not JSON)
     const logJsonFile = path.join(rootDir, 'logs', `${taskId}.json`);
-    const logData = readJsonFile(logJsonFile);
-    const coins = extractCoins(logData);
+    let coins = 0;
+    try {
+      if (fs.existsSync(logJsonFile)) {
+        const rawText = fs.readFileSync(logJsonFile, 'utf-8');
+        coins = extractCoinsFromRaw(rawText);
+      }
+    } catch (e) { coins = 0; }
     
     // Get last 10 lines from logs/${taskId}.setup.log
     const logFile = path.join(rootDir, 'logs', `${taskId}.setup.log`);
@@ -236,7 +215,7 @@ app.get('/dashboard/status.json', (req, res) => {
     workers
   };
   
-  const aliased = Object.assign({}, response, { started_at: response.start_time, ended_at: response.end_time, estimate_seconds: response.estimate ? response.estimate.total_seconds : null, workers: (response.workers || []).map(function(w) { return Object.assign({}, w, { coins_used: w.coins }); }) });
+  const aliased = Object.assign({}, response, { started_at: response.start_time, ended_at: response.end_time, estimate_seconds: response.estimate ? response.estimate.total_seconds : null, workers: (response.workers || []).map(function(w) { return Object.assign({}, w, { coins_used: w.coins, id: w.taskId, log_tail: w.logs }); }) });
   res.json(aliased);
 });
 

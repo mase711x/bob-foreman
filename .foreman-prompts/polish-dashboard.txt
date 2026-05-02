@@ -1,0 +1,125 @@
+Mission: Three specific bug fixes in status-server.cjs. The diagnosis is already done — apply the fixes exactly as specified below. Do not invent additional changes.
+
+Your scope (modify ONLY this file):
+  - status-server.cjs
+
+Files to read first to ground yourself:
+  - status-server.cjs (entire file — understand current structure)
+  - logs/v3-coin-fix.json (a sample Bob CLI log — to verify your regex works against real data)
+
+Files you must NOT touch:
+  - dashboard/index.html (separate concern)
+  - scripts/* (separate)
+  - .foreman-prompts/* (separate)
+  - package.json, package-lock.json (frozen)
+
+=================================================================
+Bug 1: Coin extraction returns 0 because JSON.parse fails silently
+=================================================================
+
+Current state: status-server.cjs has an `extractCoins(logData)` function that
+expects logData to be a parsed JSON object with `logData.stats.sessionCost`.
+
+Reality: Bob CLI does NOT write JSON to logs/<task>.json. It writes plaintext
+mixed with JSON-fragment substrings. The actual file contains lines like:
+
+    "sessionCost": 0.027362
+    "totalCalls": 1,
+    "totalCoins": 0,
+
+These are embedded in a much larger plaintext stream (PowerShell stderr, error
+traces, etc.). JSON.parse on the whole file throws — and the current code
+silently swallows it, returning 0.
+
+Required fix: Replace `extractCoins()` to:
+  1. Accept the raw file contents as a STRING (not parsed JSON).
+  2. Use a regex to find ALL occurrences of `"sessionCost":\s*([\d.]+)` in
+     the text. Each match represents one Bob session cost.
+  3. Sum all matched values.
+  4. Return the sum as a number.
+
+The caller currently does something like:
+    const logData = readJsonFile(logJsonFile);
+    const coins = extractCoins(logData);
+
+Update the caller to pass the raw text instead:
+    const rawText = fs.readFileSync(logJsonFile, 'utf-8');
+    const coins = extractCoins(rawText);
+
+If the file does not exist, return 0 (no crash).
+
+Verify with a quick test:
+  - Read logs/v3-coin-fix.json — your regex should find at least one
+    sessionCost value > 0 (the real run had ~0.027).
+  - For tasks with no Bob log file (e.g. test-001), the function returns 0.
+
+=================================================================
+Bug 2: Dashboard shows no worker headers (taskId not displayed)
+=================================================================
+
+Current state: The /dashboard/status.json response sends
+`workers[].taskId` but the dashboard.html JavaScript reads `worker.id`.
+Result: empty header on every card.
+
+Required fix: In the response-building code (around line 211-214 and the
+aliasing block around line 239), add an `id` alias that mirrors `taskId`.
+
+Find the existing aliasing line that adds `coins_used: w.coins`. Extend it
+to also add:
+    id: w.taskId
+
+DO NOT remove or rename `taskId`. Both `taskId` and `id` should be present
+side-by-side, so any other consumer keeps working.
+
+=================================================================
+Bug 3: Dashboard shows empty log boxes (logs not displayed)
+=================================================================
+
+Current state: Same root cause as Bug 2. Server sends `workers[].logs` but
+dashboard reads `worker.log_tail`. Empty log box on every card.
+
+Required fix: Same aliasing block. Add:
+    log_tail: w.logs
+
+DO NOT remove `logs`. Add `log_tail` alongside.
+
+=================================================================
+After all 3 fixes, the aliased worker object should look like:
+
+    {
+      taskId: "v3-coin-fix",
+      id: "v3-coin-fix",          // NEW
+      status: "done",
+      coins: 0.027362,             // now non-zero (Bug 1 fixed)
+      coins_used: 0.027362,        // existing alias, now non-zero
+      logs: [...],
+      log_tail: [...]              // NEW
+    }
+
+=================================================================
+
+Verification before claiming done:
+  1. Run: node status-server.cjs
+     - Server boots without errors. Prints "Status server running on port 3001".
+  2. Run: curl -s http://localhost:3001/dashboard/status.json | findstr "sessionCost coins id log_tail"
+     - The response includes "id" alongside "taskId"
+     - The response includes "log_tail" alongside "logs"
+     - At least one worker has "coins" > 0 (the v3-coin-fix worker has logs/v3-coin-fix.json with sessionCost ~0.027)
+  3. Refresh the dashboard at http://192.168.178.86:8765/dashboard.html in a browser.
+     - Each worker card now shows a title (the task ID).
+     - Each worker card now shows log lines.
+     - Total "coins used" at the top is non-zero.
+
+Constraints:
+  - No npm install. Use built-ins only.
+  - Don't change unrelated code. The diff should be small (under ~30 lines added/changed).
+  - Preserve the existing /api/reviewer endpoint and its markers.
+  - Don't touch the routing, just the data shape.
+
+Commit:
+  - Branch: worker/polish-dashboard-aliases
+  - Message: `fix: dashboard aliases (id, log_tail) and coin regex extraction`
+  - One commit, focused.
+
+Done = all 3 verification steps pass. Confirm by curling the endpoint and
+reading the response yourself before claiming done.
