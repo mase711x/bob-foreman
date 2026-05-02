@@ -1,0 +1,62 @@
+Mission: Write the prompt file that the Reviewer-Bob will be spawned with.
+
+The Reviewer-Bob is a Bob CLI session running in the existing `foreman-reviewer` Custom Mode. Its job: review the diff between two git refs, find issues, and either fix them with `fix:` commits or log them as skipped.
+
+Your scope (you may ONLY modify/create):
+  - .foreman-prompts/reviewer.txt (NEW — this is your sole deliverable)
+
+Files you must read first:
+  - V3-PLAN.md at repo root (full specification, especially the JSON schema for .foreman/tasks/reviewer.json)
+  - .bob/rules-foreman-reviewer/01-reviewer.md (the Custom Mode rules — they define what kind of issues reviewer flags)
+  - .foreman-prompts/architecture.txt (existing v2 prompt — match the style)
+
+What you must NOT touch:
+  - .bob/rules-foreman-reviewer/* (already exists, don't modify)
+  - status-server.cjs (another worker)
+  - scripts/* (other workers)
+  - V3-PLAN.md (your read-only spec)
+
+Required content of reviewer.txt:
+
+The prompt must instruct the reviewer-Bob to:
+  1. Identify what to review: by default, the diff `master~6..HEAD` (covers the 6 v3 worker merges). Accept an optional override via env var or arg.
+  2. For each diff hunk, evaluate against these categories (already in the Custom Mode rules):
+     - security issues (SQL injection, XSS, missing auth, secret leaks)
+     - performance problems (N+1, missing indexes, sync I/O in hot paths)
+     - error handling (missing try/catch, swallowed errors, no resource cleanup)
+     - code smells (dead code, unclear names, magic numbers)
+  3. For each issue found, decide:
+     - SIMPLE FIX (small, local, low-risk): commit the fix with prefix `fix:` and a clear message
+     - COMPLEX (cross-cutting, refactor needed, ambiguous): log as "skipped" with a one-line reason
+  4. After all hunks processed, write a single JSON file to `.foreman/tasks/reviewer.json` with the EXACT shape from V3-PLAN.md (run_id ISO timestamp, summary{issues_found, auto_fixed, skipped}, interventions[]).
+  5. Append the run summary to `.foreman/reviewer-history.json` (read existing if present, increment lifetime totals, append run to runs[]).
+  6. Print one line: `Reviewer done: N found, M fixed, K skipped` to stdout.
+
+Style:
+  - The prompt should be ~30-50 lines, terse, instructional.
+  - Match the calm, directive tone of existing .foreman-prompts/*.txt files.
+  - No marketing fluff. Bob is talking to Bob.
+
+Constraints:
+  - DO NOT include the JSON schema inline if it's already in V3-PLAN.md — reference it: "See V3-PLAN.md schema."
+  - DO NOT instruct the reviewer to install packages or change dependencies
+  - The reviewer must NEVER touch:
+    - .foreman-prompts/* (these are sacred — no recursion)
+    - V3-PLAN.md
+    - The reviewer's own files (foreman-review.ps1, reviewer.txt)
+    - LICENSE, README.md, CHANGELOG.md
+  - The reviewer is allowed to skip more aggressively than fix — when in doubt, skip and log.
+
+Verification before claiming done — ALL must pass:
+  - The file .foreman-prompts/reviewer.txt exists
+  - It is between 25 and 60 lines
+  - It clearly states what to read, what to write, what to never touch, and what the JSON output looks like (or references V3-PLAN.md for it)
+  - Read the file end to end yourself: a Bob spawning with this prompt would know exactly which files to write and which to never touch
+  - DONE means: a complete, instructional, self-contained prompt that another Bob can act on without ambiguity.
+
+Commit:
+  - Branch: worker/v3-reviewer-prompt
+  - Message: `feat: add reviewer-bob prompt template`
+  - One commit.
+
+Done = file written and your verification passes.

@@ -1,0 +1,46 @@
+Mission: Fix the dashboard coin-tracking bug.
+
+Current bug: The Bob Foreman dashboard at /dashboard.html displays "0.00 coins used" even when real Bob workers consume coins. The total counter and per-worker counter both show zero.
+
+Your scope (you may ONLY modify these files):
+  - status-server.cjs (only the coin-tracking section)
+
+Files you must read first to understand current state:
+  - status-server.cjs (entire file — find where coins are read/written)
+  - .foreman/tasks/*.json (sample worker task files — see what shape they have)
+  - V3-PLAN.md at repo root (the spec — your rules are in section "Critical Rules" and "Coin-Fix Bug Details")
+
+What you must NOT touch:
+  - dashboard/index.html (another worker owns it)
+  - scripts/foreman-build.ps1 (another worker owns it)
+  - package.json, package-lock.json, .gitignore (frozen)
+  - The /api/reviewer endpoint area — that's another worker's territory
+
+Approach:
+  1. Read status-server.cjs end to end. Locate the coin-tracking logic.
+  2. Identify why the coin field stays at 0. Two hypotheses to check:
+     a) The .foreman/tasks/<task>.json files do not contain a coin field. → Worker logs must be parsed for "[coins: X.XX]" markers from the Bob CLI output.
+     b) The JSON files DO contain coins, but status-server is not reading that field correctly.
+  3. Implement the fix surgically — minimum diff. Add coin parsing if needed, OR fix the read path if the data is already there.
+  4. Add a small comment explaining what you changed and why.
+
+Verification before claiming done — ALL must pass:
+  - Start the server: `node status-server.cjs` — boots without error
+  - curl http://localhost:8765/api/status — returns 200, valid JSON
+  - Inspect existing .foreman/tasks/*.json files — they exist from a prior v2 run with real coin consumption
+  - The /api/status response shows `workers[].coins` as non-zero numbers reflecting the historical data, AND the aggregate (e.g. `total_coins` or `coins_used`) is the sum of those
+  - If the historical files do not contain coin data: parse the worker log lines for `[coins: X.XX]` markers and ensure the parsed values populate the API response
+  - The pre-existing /api/status response shape is unchanged — only the values inside the existing fields are now correct
+  - DONE means: a fresh `curl /api/status | jq .` shows coins != 0 against the existing historical data. Not "code parses". RUNS and SHOWS REAL NUMBERS.
+
+Constraints:
+  - DO NOT install npm packages
+  - DO NOT reformat the rest of status-server.cjs — additive/surgical edits only
+  - DO NOT change the /api/status response shape — only fix the values inside it
+
+Commit:
+  - Branch: worker/v3-coin-fix
+  - Message: `fix: dashboard coin counter shows actual usage`
+  - One commit, focused.
+
+Done = your verification passes AND your branch is committed.

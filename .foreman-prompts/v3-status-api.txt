@@ -1,0 +1,100 @@
+Mission: Add a new `/api/reviewer` endpoint to status-server.cjs that serves reviewer summary, lifetime stats, and intervention list.
+
+This endpoint feeds the dashboard's "Issues Auto-Fixed" card.
+
+Your scope (you may ONLY modify):
+  - status-server.cjs (additive only — add new endpoint, do not refactor existing)
+
+Files you must read first:
+  - V3-PLAN.md at repo root (the spec — especially the JSON schemas for reviewer.json and reviewer-history.json)
+  - status-server.cjs (the entire existing file — understand its routing pattern, response format, file-reading helpers)
+  - .foreman/tasks/reviewer.json (may not exist yet — that's fine, your endpoint must handle missing file gracefully)
+  - .foreman/reviewer-history.json (may not exist yet — same handling)
+
+What you must NOT touch:
+  - The existing /api/status endpoint (another worker, v3-coin-fix, owns the coin section there)
+  - dashboard/index.html (another worker)
+  - scripts/* (other workers)
+  - Any file outside status-server.cjs
+
+
+
+Coordination note:
+
+You are running in Wave 2 of a two-wave build. Wave 1 already merged a fix
+to the coin-tracking section of status-server.cjs. Read the current file
+to see the current state — do not assume the original v2 file.
+
+  - Add ONLY new endpoint blocks at the END of the routing section, BEFORE the catch-all 404 handler
+  - Do NOT modify any code that handles `/api/status` or coin tracking
+  - Wrap your new endpoint code between two clear markers (helps future readers):
+    ```
+    // === v3-status-api: BEGIN ===
+    // ... your code ...
+    // === v3-status-api: END ===
+    ```
+
+Endpoint specification:
+
+`GET /api/reviewer`
+
+Response shape (Content-Type: application/json):
+
+```json
+{
+  "summary": {
+    "issues_found": 7,
+    "auto_fixed": 5,
+    "skipped": 2,
+    "last_run_id": "2026-05-02T10:30:00Z"
+  },
+  "lifetime": {
+    "total_runs": 12,
+    "total_issues_found": 47,
+    "total_auto_fixed": 38,
+    "total_skipped": 9
+  },
+  "interventions": [
+    {
+      "commit": "abc123",
+      "file": "src/db.js",
+      "issue": "no error handler on pool.connect",
+      "fix": "added try/catch with finally{ pool.end() }"
+    }
+  ]
+}
+```
+
+Source files to read:
+  - `.foreman/tasks/reviewer.json` → maps to `summary` and `interventions`
+  - `.foreman/reviewer-history.json` → maps to `lifetime`
+
+Edge cases:
+  - If neither file exists: return 200 with all-zero values:
+    `{summary: {issues_found:0, auto_fixed:0, skipped:0, last_run_id:null}, lifetime: {total_runs:0, total_issues_found:0, total_auto_fixed:0, total_skipped:0}, interventions: []}`
+  - If reviewer.json exists but reviewer-history.json does not: use reviewer.json for summary+interventions, fill lifetime with zeros
+  - If a file is malformed JSON: log a warning to stderr, return zeros for that section, still respond 200
+  - The endpoint must NEVER throw 500 — degradation over crash
+
+Constraints:
+  - DO NOT install npm packages
+  - DO NOT use async/await if the existing file uses callbacks (match the codebase style)
+  - DO NOT add CORS headers if the existing endpoints don't have them
+  - The endpoint reads files SYNCHRONOUSLY on each request (low traffic — this is fine)
+  - Re-read on every request — do not cache (the dashboard polls every 2s, freshness matters more than perf)
+
+Verification before claiming done — ALL must pass:
+  - Server starts: `node status-server.cjs` — no errors on boot
+  - GET http://localhost:8765/api/reviewer (no reviewer.json present): returns 200 with the all-zero shape — verified with curl, not just code review
+  - Create a fake .foreman/tasks/reviewer.json matching V3-PLAN.md schema (5 found, 3 fixed, 2 skipped, 2 sample interventions)
+  - GET /api/reviewer again: response actually reflects those numbers — verified with curl
+  - The existing /api/status endpoint still works (regression check) — verified with curl
+  - The two markers `// === v3-status-api: BEGIN ===` and `// === v3-status-api: END ===` are present
+  - DONE means: curl works for both endpoints, returns valid JSON, shape matches V3-PLAN. Not "code parses". RUNS and ANSWERS.
+
+Commit:
+  - Branch: worker/v3-status-api
+  - Message: `feat: add /api/reviewer endpoint for stats`
+  - One commit.
+
+Done = endpoint added, edge cases handled, verification steps pass.

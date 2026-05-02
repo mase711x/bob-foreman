@@ -1,0 +1,74 @@
+Mission: Add a Reviewer stage to scripts/foreman-build.ps1 — runs after all build workers are merged.
+
+Your scope (you may ONLY modify):
+  - scripts/foreman-build.ps1 (additive — add new stage at the end, do not refactor existing)
+
+Files you must read first:
+  - V3-PLAN.md at repo root (the spec)
+  - scripts/foreman-build.ps1 (the entire existing file — understand its phase structure, where the merge step ends, how it logs to the console)
+  - scripts/foreman-review.ps1 (another worker is creating this — the contract is documented in V3-PLAN.md and below, you do NOT need the file to actually exist at your edit time)
+
+What you must NOT touch:
+  - scripts/spawn-worker.ps1 (frozen)
+  - scripts/foreman-review.ps1 (another worker creates it)
+  - status-server.cjs, dashboard/* (other workers)
+  - .foreman-prompts/* (other workers)
+  - Any logic before the merge step in foreman-build.ps1
+
+What to add:
+
+After the existing merge phase completes successfully (all worker branches merged into master), append a new stage block. Place it between two CLEAR markers so it can be easily identified:
+
+```powershell
+# === v3-build-stage: BEGIN reviewer integration ===
+# ... your code ...
+# === v3-build-stage: END reviewer integration ===
+```
+
+Behavior of the new stage:
+
+1. Check if the prerequisite files exist:
+   - `.foreman-prompts/reviewer.txt` (created by v3-reviewer-prompt worker)
+   - `scripts/foreman-review.ps1` (created by v3-review-script worker)
+
+2. If EITHER is missing:
+   - Print: `[foreman] Reviewer stage skipped — prerequisites not present (this is expected on v2 builds).`
+   - Exit normally (do not fail the build — backwards compatible)
+
+3. If BOTH exist:
+   - Print: `[foreman] Build complete. Starting reviewer pass...`
+   - Determine the target ref range. Default: `master~$WorkerCount..HEAD` where $WorkerCount is the number of workers that just merged.
+     - If you can't easily get $WorkerCount, default to `master~6..HEAD` (matching the v3 build's typical 6 workers).
+   - Invoke: `& "$PSScriptRoot\foreman-review.ps1" -Target $targetRange`
+   - Capture the exit code.
+   - On success (exit 0):
+     - Read .foreman/tasks/reviewer.json (in the repo root, the script copies it there)
+     - Parse and print the summary line: `[foreman] Reviewer: X found, Y fixed, Z skipped`
+   - On failure (non-zero exit): print `[foreman] Reviewer stage failed — see warning above. Build is still considered successful.`
+
+4. The reviewer stage NEVER fails the overall build.
+   - Print warnings, log errors, but always exit the script with the same exit code as before the reviewer stage.
+
+Constraints:
+  - DO NOT install PowerShell modules
+  - DO NOT change anything in the existing foreman-build.ps1 above your insertion point
+  - DO NOT add the stage to a function — inline append is fine, matching the existing script's style
+  - Use $PSScriptRoot for relative paths (script's own directory)
+  - All file checks use `Test-Path`, all reads use `Get-Content` + `ConvertFrom-Json` (PowerShell standards)
+
+Verification before claiming done — ALL must pass:
+  - The script still parses with no errors (PowerShell parser check)
+  - Run the script once with NO prerequisites present: it completes, prints the skip message, exits with the same code as before
+  - Create empty stub files at .foreman-prompts/reviewer.txt and scripts/foreman-review.ps1 (just to satisfy Test-Path)
+  - Run the script again: it now invokes foreman-review.ps1 (which may fail because the stub is empty — that is fine, the build itself must still complete)
+  - The reviewer stage NEVER fails the overall build — verify by checking $LASTEXITCODE after a stub-failure run is the same as a clean build
+  - The two markers BEGIN and END are present
+  - The diff is purely additive — git diff shows zero lines removed above the insertion point
+  - DONE means: script runs end-to-end without crashing, gracefully handles both prereq-present and prereq-missing cases. Not "syntax valid". EXECUTES.
+
+Commit:
+  - Branch: worker/v3-build-stage
+  - Message: `feat: integrate reviewer pass into foreman-build`
+  - One commit.
+
+Done = stage added with markers, gracefully skips when prerequisites absent, verification passes.
