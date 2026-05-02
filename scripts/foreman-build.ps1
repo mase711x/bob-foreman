@@ -90,3 +90,44 @@ Write-Host '[5/5] DONE' -ForegroundColor Cyan
 $jobs | Receive-Job
 Write-Host ''
 Write-Host 'Dashboard: http://192.168.178.86:8765/dashboard.html'
+
+# === v3-build-stage: BEGIN reviewer integration ===
+$reviewerPrompt = "$root\.foreman-prompts\reviewer.txt"
+$reviewerScript = "$PSScriptRoot\foreman-review.ps1"
+
+if (-not (Test-Path $reviewerPrompt) -or -not (Test-Path $reviewerScript)) {
+    Write-Host '[foreman] Reviewer stage skipped — prerequisites not present (this is expected on v2 builds).' -ForegroundColor Yellow
+} else {
+    Write-Host '[foreman] Build complete. Starting reviewer pass...' -ForegroundColor Cyan
+    
+    $workerCount = $TaskIds.Count
+    if ($workerCount -eq 0) { $workerCount = 6 }
+    $targetRange = "master~$workerCount..HEAD"
+    
+    $reviewerExitCode = 0
+    try {
+        & $reviewerScript -Target $targetRange
+        $reviewerExitCode = $LASTEXITCODE
+    } catch {
+        $reviewerExitCode = 1
+        Write-Host "    [foreman] Reviewer invocation error: $_" -ForegroundColor Red
+    }
+    
+    if ($reviewerExitCode -eq 0) {
+        $reviewerJson = "$root\.foreman\tasks\reviewer.json"
+        if (Test-Path $reviewerJson) {
+            try {
+                $reviewData = Get-Content $reviewerJson -Raw | ConvertFrom-Json
+                $found = $reviewData.summary.issues_found
+                $fixed = $reviewData.summary.auto_fixed
+                $skipped = $reviewData.summary.skipped
+                Write-Host "[foreman] Reviewer: $found found, $fixed fixed, $skipped skipped" -ForegroundColor Green
+            } catch {
+                Write-Host '    [foreman] Could not parse reviewer.json' -ForegroundColor Yellow
+            }
+        }
+    } else {
+        Write-Host '[foreman] Reviewer stage failed — see warning above. Build is still considered successful.' -ForegroundColor Yellow
+    }
+}
+# === v3-build-stage: END reviewer integration ===
