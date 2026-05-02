@@ -1,1 +1,0 @@
-{"id":"270b64e1-c721-4a6e-96bd-4926fec62129","ts":"2026-05-02T12:01:24.602Z","path":"C:\\Users\\tribe\\bob-foreman\\worktrees\\v3-coin-fix\\status-server.cjs","version":"1.0.0","taskID":"9918fc01-ba2b-4b9a-a694-6cfab1c33566"}
