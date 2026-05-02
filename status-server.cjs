@@ -240,6 +240,67 @@ app.get('/dashboard/status.json', (req, res) => {
   res.json(aliased);
 });
 
+// === v3-status-api: BEGIN ===
+// Endpoint: GET /api/reviewer
+// Returns reviewer summary, lifetime stats, and intervention list
+app.get('/api/reviewer', (req, res) => {
+  const rootDir = process.cwd();
+  
+  // Initialize response with zeros
+  const response = {
+    summary: {
+      issues_found: 0,
+      auto_fixed: 0,
+      skipped: 0,
+      last_run_id: null
+    },
+    lifetime: {
+      total_runs: 0,
+      total_issues_found: 0,
+      total_auto_fixed: 0,
+      total_skipped: 0
+    },
+    interventions: []
+  };
+  
+  // Read reviewer.json (current run summary)
+  const reviewerFile = path.join(rootDir, '.foreman', 'tasks', 'reviewer.json');
+  const reviewerData = readJsonFile(reviewerFile);
+  
+  if (reviewerData) {
+    // Populate summary
+    if (reviewerData.summary) {
+      response.summary.issues_found = reviewerData.summary.issues_found || 0;
+      response.summary.auto_fixed = reviewerData.summary.auto_fixed || 0;
+      response.summary.skipped = reviewerData.summary.skipped || 0;
+    }
+    
+    // Set last_run_id
+    if (reviewerData.run_id) {
+      response.summary.last_run_id = reviewerData.run_id;
+    }
+    
+    // Populate interventions
+    if (Array.isArray(reviewerData.interventions)) {
+      response.interventions = reviewerData.interventions;
+    }
+  }
+  
+  // Read reviewer-history.json (lifetime stats)
+  const historyFile = path.join(rootDir, '.foreman', 'reviewer-history.json');
+  const historyData = readJsonFile(historyFile);
+  
+  if (historyData && historyData.lifetime) {
+    response.lifetime.total_runs = historyData.lifetime.total_runs || 0;
+    response.lifetime.total_issues_found = historyData.lifetime.total_issues_found || 0;
+    response.lifetime.total_auto_fixed = historyData.lifetime.total_auto_fixed || 0;
+    response.lifetime.total_skipped = historyData.lifetime.total_skipped || 0;
+  }
+  
+  res.json(response);
+});
+// === v3-status-api: END ===
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Status server running on port ${PORT}`);
