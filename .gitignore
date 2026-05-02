@@ -10,3 +10,6 @@ mock-workers.ps1
 patch-server.ps1
 node_modules/
 urls.db
+*.log
+*.bundle
+foreman-bundle.ps1
