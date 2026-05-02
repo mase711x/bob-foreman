@@ -1,0 +1,28 @@
+Schreibe eine SUBMISSION.md Datei direkt im aktuellen Verzeichnis fuer die IBM Bob Coding Challenge 2026 Hackathon Submission Page.
+
+PROJEKT: Bob Foreman - ein Orchestrator der mehrere Bob CLI Instanzen parallel in isolierten git worktrees laufen laesst, mit Live Dashboard und Telegram Status Updates.
+
+FLAGSHIP DEMO: URL Shortener (Express API + sql.js Persistence + Vanilla JS Frontend + Jest Tests + README) wurde von Foreman in 45 Minuten gebaut, sequentiell waeren ca 9 Stunden noetig gewesen.
+
+SUBMISSION STRUKTUR (pitch-style fuer Judges, business plus technisch):
+
+1. Tagline (1 Satz): Was Foreman tut.
+2. Problem Statement: Bob CLI ist maechtig aber sequentiell. Ein Mensch + ein Bob = lineare Geschwindigkeit. Komplexe Apps brauchen Stunden.
+3. Solution: Foreman zerlegt Projekte in Tasks, spawnt Bob-Instanzen parallel, nutzt git worktrees fuer Konfliktfreiheit, zeigt Live-Progress mit Bob's eigener Time-Schaetzung als Benchmark.
+4. Impact / Metrics:
+   - 4x Throughput durch Parallelisierung
+   - Demo-App in 45min statt 9h (bewiesen)
+   - Coin Cost: typisch 15-20 Coins fuer eine ganze App
+   - Built BY a non-coder USING Bob
+5. Technical Highlights:
+   - Self-validating: Bob schaetzt sequenzielle Zeit vorher, Dashboard zeigt Echtzeit-Differenz live
+   - Self-recovering: Worker schreiben strukturierte Status-Marker, status-server kann waehrend laufender Worker neu gestartet werden
+   - Isolation: git worktree pro Worker, kein merge conflict
+   - Live Telemetry: Express :3001 + Vanilla HTML Dashboard, kein build step
+   - Cross-platform: PowerShell auf Windows orchestriert, Dashboard auf Linux nginx via Docker, Telegram MCP Server fuer mobile Updates
+6. Innovation: Foreman ist meta - Foreman v2 (status-server, dashboard) wurde mit Foreman v1 gebaut.
+7. Demo Links: Dashboard, URL Shortener, Repo, Video.
+
+TONE: Pitch-style, energetisch, business-friendly, aber technisch akkurat. Konkrete Zahlen wo moeglich. Markdown.
+
+SCHREIBE DIREKT die Datei SUBMISSION.md im aktuellen Worktree-Verzeichnis.

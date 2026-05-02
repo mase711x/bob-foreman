@@ -1,0 +1,12 @@
+worktrees/
+logs/
+.foreman/start_time.txt
+.foreman/end_time.txt
+.foreman/tasks/
+server.log
+status-server.log
+extracted-log.json
+mock-workers.ps1
+patch-server.ps1
+node_modules/
+urls.db

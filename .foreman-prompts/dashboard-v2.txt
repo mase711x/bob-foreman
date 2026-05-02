@@ -1,0 +1,67 @@
+You are a coding agent. Update C:\\Users\\tribe\\bob-foreman\\dashboard\\index.html — the existing Foreman dashboard (dark theme, cyan glow). KEEP the existing aesthetic and palette. Replace the timer/comparison logic to poll the real backend.
+
+DATA SOURCE: http://192.168.179.250:3001/dashboard/status.json (CORS-enabled). Poll every 1000ms.
+
+RESPONSE SHAPE (you can rely on these fields existing, though some may be null):
+{
+  project, estimate_seconds, breakdown,
+  started_at, ended_at, elapsed_seconds, saved_seconds, is_done,
+  workers: [{id, status, coins_used, started_at, ended_at, log_tail}],
+  server_time
+}
+
+REQUIRED CHANGES:
+
+1. POLLING:
+   - fetch the URL above every 1000ms
+   - on fetch failure: small '● offline' indicator in header (red dot, 8px). Keep last-known data on screen. Reconnect automatically.
+   - on success: '● live' indicator (green pulsing dot)
+
+2. HERO BLOCK (replace any existing sequential-vs-parallel hardcoded bars):
+   THREE big numbers in a row, each in its own card-like container with a label above:
+     ESTIMATED   (Bobs sequential guess, mm:ss, static once received)
+     ELAPSED     (live count from started_at to now, mm:ss, ticks every 100ms)
+     SAVED       (estimate_seconds minus elapsed_seconds, mm:ss, can be negative styled red)
+
+   - If estimate_seconds is null, show '—'
+   - If started_at is null, ELAPSED shows '0:00' in muted color
+   - When is_done === true: SAVED becomes golden (gradient gold), slight scale pulse animation, label changes to '🏆 You saved Xm Ys' and shows percentage faster, e.g. '68% faster'.
+   - Below the row, small caption: 'Bobs estimate (sequential) vs actual parallel runtime'
+
+3. EMPTY STATE:
+   - If started_at is null AND workers array is empty: show centered hint card 'No active project. Start with: .\scripts\foreman-build.ps1 -ProjectDescription "..."'
+   - The hero timers stay visible but greyed (0:00 each)
+
+4. WORKER CARDS (keep the existing card design but data-bind from response.workers):
+   - One card per worker, count from response (no hardcoded count)
+   - Status badge (top-right of card): queued (grey), running (cyan glow + pulsing dot), done (green check ✓), error (red ✗)
+   - Coin counter live: '💰 X.XX coins'
+   - Worker title = worker.id
+   - Log tail: last 3-5 lines, monospace, scroll to bottom on update
+   - Card accent color cycles: cyan (#00f0ff), magenta (#ff00ff), lime (#00ff80), orange (#ff8800), then repeat
+   - When done: subtle green flash once (CSS animation 600ms then stop)
+
+5. TOTAL COIN COUNTER:
+   - Sum coins_used across all workers, display next to elapsed timer in hero block: '💰 X.XX coins used'
+
+6. POLISH:
+   - DOM diffing: only update an element if its value changed (avoids flicker)
+   - All transitions: 300ms ease
+   - Mobile: cards collapse to one column under 600px width
+   - Add a tiny 'last updated Xs ago' timestamp in the corner
+
+7. PRESERVE existing CSS variables and color palette. The page background, font, and overall atmosphere stay. Only swap data wiring + hero block + add the worker cards container.
+
+DONT:
+- No build step. Single index.html with inline <style> and <script>.
+- No external libraries (no React, no Vue, no jQuery). Vanilla JS only.
+- Dont remove or break existing animations.
+- Dont add localStorage or any browser storage.
+
+FIRST READ the existing dashboard\\index.html in the project root. Preserve its CSS variables, fonts, and visual identity. Then replace only the dynamic parts.
+
+WHEN DONE: 
+1. Save updated file to dashboard\\index.html (same path).
+2. Also copy it to C:\\Users\\tribe\\bob-foreman\\dashboard-v2.html for SCP-back.
+3. Print the line count of the new file and a 30-line preview of the <body> content.
+4. Output the literal string 'DASHBOARD V2 READY'.

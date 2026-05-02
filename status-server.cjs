@@ -230,7 +230,8 @@ app.get('/dashboard/status.json', (req, res) => {
     workers
   };
   
-  res.json(response);
+  const aliased = Object.assign({}, response, { started_at: response.start_time, ended_at: response.end_time, estimate_seconds: response.estimate ? response.estimate.total_seconds : null, workers: (response.workers || []).map(function(w) { return Object.assign({}, w, { coins_used: w.coins }); }) });
+  res.json(aliased);
 });
 
 // Start server

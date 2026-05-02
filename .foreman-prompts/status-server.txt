@@ -1,0 +1,77 @@
+You are a coding agent. Create a Node.js Express server at C:\\Users\\tribe\\bob-foreman\\status-server.js (file path: status-server.js).
+
+PURPOSE: Aggregate the live state of Foreman workers + project estimate + timing into one JSON endpoint that the dashboard polls every second. The dashboard expects this exact response shape.
+
+REQUIREMENTS:
+
+1. SERVER:
+   - Express app, listen on 0.0.0.0:3001
+   - Console log on startup: 'Foreman Status Server :3001'
+
+2. ENDPOINT GET /dashboard/status.json — return JSON:
+   {
+     project: <string from .foreman/estimate.json or null>,
+     estimate_seconds: <int from .foreman/estimate.json or null>,
+     breakdown: <array from estimate or empty>,
+     started_at: <ISO from .foreman/start_time.txt or null — null means timer not started yet>,
+     ended_at: <ISO from .foreman/end_time.txt or null>,
+     elapsed_seconds: <(now or ended_at) minus started_at, integer seconds, 0 if not started>,
+     saved_seconds: <estimate_seconds minus elapsed_seconds, can be negative if estimate was too low>,
+     is_done: <bool, true iff .foreman/end_time.txt exists>,
+     workers: [
+       {
+         id: <string, the task id>,
+         status: 'queued' | 'running' | 'done' | 'error',
+         coins_used: <number, from log JSON>,
+         started_at: <ISO or null>,
+         ended_at: <ISO or null>,
+         log_tail: <array of up to 5 most recent text lines>
+       }
+     ],
+     server_time: <ISO of now>
+   }
+
+3. ENDPOINT GET /dashboard/health — returns {ok: true, version: '1.0'}
+
+4. CORS: enable for ALL origins using the cors npm package (app.use(cors())).
+
+5. CACHE HEADERS: on /dashboard/status.json set Cache-Control: no-store, Pragma: no-cache.
+
+6. DATA SOURCES (read fresh on every request, no server-side caching):
+   Project root for ALL paths: C:\\Users\\tribe\\bob-foreman (the directory containing this file).
+   - .foreman/estimate.json — project, estimate_seconds, breakdown
+   - .foreman/start_time.txt — single ISO timestamp string
+   - .foreman/end_time.txt — single ISO timestamp string
+   - .foreman/tasks/*.json — one file per worker, each contains {id, started_at, ended_at?, status?}
+   - logs/<id>.json — Bobs full output for that worker. May be NDJSON (one JSON object per line) OR a single JSON object with 'messages' array.
+
+7. WORKER STATUS INFERENCE:
+   - For each id discovered (from .foreman/tasks/*.json filenames AND logs/*.json filenames, union of both):
+     - if logs/<id>.json exists and is non-empty → status 'done' (or 'error' if it contains an 'error' or 'exception' field)
+     - else if .foreman/tasks/<id>.json has started_at and no ended_at → 'running'
+     - else → 'queued'
+
+8. COIN PARSING from logs/<id>.json:
+   - If file is NDJSON, parse each line; sum any 'coins' or 'coin_delta' or 'cost_coins' field found.
+   - If file is single JSON object, look for top-level 'coins', 'coins_used', 'total_coins', or nested metadata.coins.
+   - If nothing found, default 0.
+
+9. LOG TAIL:
+   - From logs/<id>.json, extract last 5 text-bearing entries.
+   - For NDJSON: take last 5 lines that have a 'content' or 'text' or 'message' field, return their text.
+   - For single JSON with messages array: take last 5 messages, return their text.
+   - Strip ANSI codes. Truncate each to 200 chars.
+   - If file unreadable, return empty array.
+
+10. ROBUSTNESS:
+    - Wrap every file read in try/catch. Missing file = use default. Malformed JSON = use default.
+    - NEVER crash the process from bad input.
+    - Use process.cwd() or __dirname as project root, whichever is the directory of status-server.js.
+
+11. DEPENDENCIES:
+    - express, cors
+    - Run: npm install express cors --save (these are likely already installed; check first by requiring them in try/catch and npm-installing only if needed).
+
+FILE STRUCTURE: single file, plain CommonJS (require/module.exports), under 200 lines.
+
+WHEN DONE: print the full content of status-server.js to stdout, then run a quick syntax check with: node --check status-server.js. If it passes, output 'SYNTAX OK'. Then exit 0.

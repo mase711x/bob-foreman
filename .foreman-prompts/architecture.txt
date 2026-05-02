@@ -1,0 +1,19 @@
+Schreibe eine ARCHITECTURE.md Datei direkt im aktuellen Verzeichnis fuer das Projekt 'Bob Foreman'.
+
+KONTEXT: Bob Foreman ist ein Orchestrator fuer parallel laufende Bob CLI Instanzen mit git worktree Isolation. IBM Bob Coding Challenge 2026.
+
+KOMPONENTEN ZU BESCHREIBEN:
+1. foreman-build.ps1 - Top-level orchestrator. Schritte: 1) Reset state 2) Estimate via Bob plan-mode 3) Mark start_time 4) Spawn N workers parallel als PowerShell Background Jobs 5) Wait-Job 6) Mark end_time. Schreibt in .foreman/estimate.json, .foreman/start_time.txt, .foreman/end_time.txt.
+2. spawn-worker.ps1 - Wird per Background Job aufgerufen, einer pro Task. Macht: git worktree add -B worker/<id> worktrees/<id> master (Race-safe!), schreibt .foreman/tasks/<id>.json mit status (queued->running->done), Set-Location worktree, ruft bob CLI auf, schreibt logs/<id>.json mit Bob output, committed im worktree.
+3. status-server.cjs - Express auf Port 3001, GET /dashboard/status.json. Liest .foreman/tasks/*.json, .foreman/start_time.txt, .foreman/end_time.txt, .foreman/estimate.json, scannt logs/*.setup.log fuer worker discovery, aggregiert coins aus logs/<id>.json. CORS enabled.
+4. dashboard/index.html - Vanilla HTML/JS (kein Framework). Polling von /dashboard/status.json. 3 Cards: Estimated (Bob's pre-flight Schaetzung), Elapsed (live ab start_time, 100ms intervall), Saved (Estimated minus Elapsed, gruen wenn positiv, golden wenn done und positiv). Worker Cards mit color-coded borders, Status badges, Coin counter pro Worker.
+5. Telegram MCP Bot - postet alle 10 Minuten Status auf Handy.
+
+DIAGRAMME (in Mermaid Markdown notation):
+A) Component Diagram zeigt: User -> foreman-build -> [Bob estimate] + [N x spawn-worker -> worktrees/<id>/ + Bob CLI] -> .foreman/state -> status-server -> Dashboard -> User Browser. Plus Telegram Bot als seitlicher Konsument.
+B) Sequence Diagram fuer einen Spawn-Run: User triggert foreman-build, dieser fragt Bob nach Estimate, schreibt Files, spawnt 4 Background Jobs, jeder Job ruft spawn-worker.ps1, dieser macht worktree add, schreibt Status running, ruft Bob auf, Bob schreibt Files in worktree, spawn-worker committet, schreibt Status done. Foreman wartet via Wait-Job, schreibt end_time. Dashboard pollt parallel und zeigt Live-Updates.
+C) State Machine fuer Worker: queued -> running -> done/error
+
+TONE: technisch klar, fuer mid-level entwickler verstaendlich, mit Code-Snippets wo hilfreich.
+
+SCHREIBE DIREKT die Datei ARCHITECTURE.md im aktuellen Worktree-Verzeichnis.

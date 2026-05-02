@@ -1,0 +1,40 @@
+You are a coding agent. Create a PowerShell script at C:\\Users\\tribe\\bob-foreman\\scripts\\estimate.ps1 (file path: scripts/estimate.ps1).
+
+PURPOSE: Before spawning workers, ask Bob (single call, plan mode) to honestly estimate how long the entire project would take SEQUENTIALLY (one Bob, one task at a time). Save the estimate to .foreman/estimate.json so the dashboard can show 'Estimated vs Elapsed vs Saved'.
+
+SCRIPT PARAMETERS:
+- [string]$ProjectDescription (required) — e.g. 'URL Shortener with API, frontend, tests, docs'
+- [string[]]$TaskList (required) — e.g. @('API backend','Frontend','Tests','Docs')
+
+WHAT THE SCRIPT MUST DO:
+1. Build a structured prompt asking Bob for an honest sequential estimate.
+2. Call: bob $promptString --trust --yolo --instance-id ibm-coding-challenge-uat --team-id ibm-hackathon-6 --chat-mode plan --max-coins 1 --output-format json
+3. Parse Bobs JSON output. The actual content may be nested — find any JSON object containing the key 'estimate_seconds'.
+4. Ensure .foreman/ directory exists (create if missing).
+5. Write to .foreman/estimate.json an object with fields: project, tasks, estimate_seconds (integer), breakdown (array), estimated_at (ISO 8601 timestamp).
+6. Print to stdout: 'Estimated: Xm Ys (sequential)' formatted from estimate_seconds.
+
+PROMPT TEMPLATE TO SEND TO BOB (build this string in PowerShell and pass as the bob argument):
+'You are a planner. Estimate the TOTAL time in seconds to build this project SEQUENTIALLY (one developer, one task at a time, no parallelism).
+
+Project: <ProjectDescription>
+Tasks:
+- <task1>
+- <task2>
+...
+
+Per task account for: setup ~30s, coding 2-5 minutes, testing or docs if applicable. Add 20 percent buffer for edge cases. Be honest — no exaggeration.
+
+Respond with ONLY a single JSON object, no prose, no markdown fences: {"estimate_seconds": 510, "breakdown": [{"task":"API","seconds":120},{"task":"Frontend","seconds":150}]}'
+
+ERROR HANDLING:
+- If Bob returns invalid or unparseable JSON, write a fallback estimate where each task = 180 seconds, total = 180 * count + 60 buffer.
+- If $TaskList is empty, exit code 1 with 'ERROR: TaskList empty'.
+
+JSON WRITE REQUIREMENTS:
+- ConvertTo-Json -Depth 5
+- UTF-8 encoding without BOM
+
+KEEP THE SCRIPT UNDER 80 LINES. Single file. No external modules. Pure PowerShell 5.1+ compatible.
+
+WHEN DONE: Output the full content of the script to stdout as the final action so a human can verify, then exit 0.

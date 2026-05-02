@@ -1,0 +1,31 @@
+Schreibe ein VIDEO_SCRIPT.md Voiceover-Skript direkt im aktuellen Verzeichnis fuer ein 2:30 Minuten Demo-Video des Projekts 'Bob Foreman'.
+
+KONTEXT:
+Bob Foreman = Orchestrator fuer parallele Bob CLI Instanzen, IBM Bob Coding Challenge 2026.
+Flagship Demo: URL Shortener wurde in 45min statt 9h gebaut.
+Live Dashboard zeigt Estimated/Elapsed/Saved Counter live waehrend Worker arbeiten.
+Meta-Story: Foreman v2 (status-server, dashboard) wurde von Foreman v1 selbst gebaut.
+
+SKRIPT FORMAT - Markdown Tabelle pro Szene mit Spalten:
+| Time | Visual | DE Voiceover | EN Voiceover |
+
+10 SZENEN ueber 2:30 Min (150 Sek):
+0:00-0:08 - Cold Open. Schwarzer Screen mit Text-Animation. Hook-Frage.
+0:08-0:20 - Single Bob Terminal sequentiell, Uhr tickt. Etabliere das Problem.
+0:20-0:35 - Logo Reveal Bob Foreman + Architektur Diagramm zoom in.
+0:35-0:50 - Terminal: 'foreman-build URL Shortener' Enter. Estimate erscheint.
+0:50-1:30 - HAUPTSZENE: Split-Screen Dashboard mit 4 Workern live + Handy mit Telegram Updates seitlich.
+1:30-1:50 - URL Shortener Browser Demo. Link kuerzen, Redirect, Stats. Beweis es funktioniert.
+1:50-2:05 - Dashboard Done-State. Goldener SAVED Counter. Percentage faster Anzeige.
+2:05-2:20 - Meta-Reveal: 'Foreman v2 wurde von Foreman v1 selbst gebaut'. Code-Recursion-Visualisierung.
+2:20-2:30 - Outro mit Repo-Link, GitHub-URL, Hackathon-Tag, dezenter Call-to-Action.
+
+VOICEOVER STIL:
+- DE: knapp, druckvoll, kein Buzzword-Mumbo-Jumbo. Klingt wie ein Dev der seine Loesung pitched.
+- EN: gleichermassen, idiomatisches American English (nicht Translate-Englisch).
+
+Jede Szene exakt eingehalten zur Sek-Anzahl. Voiceover Sek-genau auf Visual abgestimmt. Pausen zwischen Saetzen einplanen.
+
+FINISH mit kurzem Recording-Tipp-Block: empfohlene Tools (ElevenLabs fuer Voice, OBS fuer Capture, DaVinci fuer Edit), und 3-Punkt Recording-Checkliste.
+
+SCHREIBE DIREKT die Datei VIDEO_SCRIPT.md im aktuellen Worktree-Verzeichnis.
