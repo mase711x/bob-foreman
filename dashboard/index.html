@@ -22,85 +22,177 @@
             margin-bottom: 30px;
             padding: 20px;
             border-bottom: 2px solid #333;
+            position: relative;
+        }
+
+        .connection-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #888;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #ff6b6b;
+        }
+
+        .status-dot.online {
+            background-color: #51cf66;
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.6;
+                transform: scale(1.2);
+            }
         }
 
         .title {
             font-size: 48px;
             font-weight: bold;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
             text-align: center;
         }
 
-        .header-stats {
+        .hero-timers {
             display: flex;
-            justify-content: space-around;
-            align-items: center;
-            margin-bottom: 20px;
+            justify-content: center;
+            gap: 40px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
         }
 
-        .stat {
+        .timer-card {
+            background-color: #1a1a1f;
+            border-radius: 10px;
+            padding: 25px 40px;
             text-align: center;
+            min-width: 180px;
+            border: 1px solid #333;
+            transition: all 0.3s ease;
         }
 
-        .stat-label {
-            font-size: 14px;
-            color: #888;
-            margin-bottom: 5px;
-        }
-
-        .stat-value {
-            font-size: 32px;
-            font-weight: bold;
-        }
-
-        .comparison {
-            margin-top: 20px;
-        }
-
-        .comparison-label {
-            font-size: 14px;
+        .timer-label {
+            font-size: 12px;
             color: #888;
             margin-bottom: 10px;
-            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
-        .comparison-bars {
-            display: flex;
-            gap: 20px;
-            align-items: center;
-        }
-
-        .comparison-bar {
-            flex: 1;
-            height: 40px;
-            background-color: #1a1a1f;
-            border-radius: 5px;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .comparison-fill {
-            height: 100%;
-            transition: width 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
+        .timer-value {
+            font-size: 42px;
             font-weight: bold;
+            color: #00f0ff;
         }
 
-        .comparison-sequential .comparison-fill {
-            background-color: #ff6b6b;
+        .timer-card.saved .timer-value {
+            color: #51cf66;
         }
 
-        .comparison-parallel .comparison-fill {
-            background-color: #51cf66;
+        .timer-card.saved.negative .timer-value {
+            color: #ff6b6b;
+        }
+
+        .timer-card.saved.winner {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            border-color: #ffd700;
+            animation: winner-pulse 1.5s ease-in-out infinite;
+            transform: scale(1.05);
+        }
+
+        .timer-card.saved.winner .timer-label,
+        .timer-card.saved.winner .timer-value {
+            color: #000;
+        }
+
+        @keyframes winner-pulse {
+            0%, 100% {
+                box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            }
+            50% {
+                box-shadow: 0 0 40px rgba(255, 215, 0, 0.8);
+            }
+        }
+
+        .timer-card.muted .timer-value {
+            color: #444;
+        }
+
+        .hero-caption {
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .coin-summary {
+            text-align: center;
+            font-size: 16px;
+            color: #888;
+            margin-top: 15px;
+        }
+
+        .coin-summary .coin-value {
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 20px;
+        }
+
+        .empty-state {
+            background-color: #1a1a1f;
+            border: 2px dashed #333;
+            border-radius: 10px;
+            padding: 60px 40px;
+            text-align: center;
+            margin: 40px auto;
+            max-width: 800px;
+            display: none;
+        }
+
+        .empty-state.show {
+            display: block;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        .empty-state-title {
+            font-size: 24px;
+            margin-bottom: 15px;
+            color: #888;
+        }
+
+        .empty-state-hint {
+            font-size: 14px;
+            color: #666;
+            background-color: #0a0a0f;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin-top: 20px;
         }
 
         .workers-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
             gap: 20px;
+            margin-top: 30px;
         }
 
         .worker-card {
@@ -108,22 +200,40 @@
             border-radius: 10px;
             padding: 20px;
             border-left: 4px solid;
+            transition: all 0.3s ease;
+            position: relative;
         }
 
-        .worker-card.accent-cyan {
-            border-left-color: #00ffff;
+        .worker-card.accent-0 {
+            border-left-color: #00f0ff;
         }
 
-        .worker-card.accent-magenta {
+        .worker-card.accent-1 {
             border-left-color: #ff00ff;
         }
 
-        .worker-card.accent-lime {
-            border-left-color: #00ff00;
+        .worker-card.accent-2 {
+            border-left-color: #00ff80;
         }
 
-        .worker-card.accent-orange {
+        .worker-card.accent-3 {
             border-left-color: #ff8800;
+        }
+
+        .worker-card.done-flash {
+            animation: done-flash 0.6s ease-out;
+        }
+
+        @keyframes done-flash {
+            0% {
+                background-color: #1a1a1f;
+            }
+            50% {
+                background-color: #2a4a2f;
+            }
+            100% {
+                background-color: #1a1a1f;
+            }
         }
 
         .worker-header {
@@ -141,9 +251,12 @@
         .status-badge {
             padding: 5px 15px;
             border-radius: 20px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: bold;
             text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .status-queued {
@@ -151,8 +264,12 @@
         }
 
         .status-running {
-            background-color: #ffd700;
+            background-color: #00f0ff;
             color: #000;
+        }
+
+        .status-running::before {
+            content: '●';
             animation: pulse 1.5s ease-in-out infinite;
         }
 
@@ -161,8 +278,16 @@
             color: #000;
         }
 
+        .status-done::before {
+            content: '✓';
+        }
+
         .status-error {
             background-color: #ff6b6b;
+        }
+
+        .status-error::before {
+            content: '✗';
         }
 
         @keyframes pulse {
@@ -170,7 +295,7 @@
                 opacity: 1;
             }
             50% {
-                opacity: 0.6;
+                opacity: 0.3;
             }
         }
 
@@ -179,194 +304,310 @@
             border: 1px solid #333;
             border-radius: 5px;
             padding: 10px;
-            height: 200px;
+            height: 150px;
             overflow-y: auto;
             margin-bottom: 15px;
-            font-size: 12px;
-            line-height: 1.4;
+            font-size: 11px;
+            line-height: 1.5;
+            font-family: 'Courier New', monospace;
         }
 
         .log-line {
             margin-bottom: 2px;
             word-wrap: break-word;
+            color: #aaa;
         }
 
         .coin-counter {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
             font-size: 14px;
+            color: #888;
         }
 
         .coin-value {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: bold;
+            color: #ffd700;
         }
 
-        .progress-bar {
-            width: 100%;
-            height: 20px;
-            background-color: #0a0a0f;
-            border-radius: 10px;
-            overflow: hidden;
-            border: 1px solid #333;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #4a9eff, #00d4ff);
-            transition: width 0.3s ease;
-        }
-
-        .offline-banner {
-            background-color: #ff6b6b;
-            color: #fff;
-            padding: 10px;
-            text-align: center;
-            font-weight: bold;
-            margin-bottom: 20px;
+        .last-updated {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            font-size: 10px;
+            color: #444;
+            background-color: #1a1a1f;
+            padding: 5px 10px;
             border-radius: 5px;
-            display: none;
         }
 
-        .offline-banner.show {
-            display: block;
+        @media (max-width: 600px) {
+            .hero-timers {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .timer-card {
+                min-width: 100%;
+            }
+
+            .workers-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="offline-banner" id="offlineBanner">
-        ⚠️ OFFLINE - Unable to fetch status data
-    </div>
-
     <div class="header">
+        <div class="connection-indicator">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="statusText">offline</span>
+        </div>
+
         <div class="title">Bob Foreman Live</div>
         
-        <div class="header-stats">
-            <div class="stat">
-                <div class="stat-label">Total Bobcoins</div>
-                <div class="stat-value" id="totalCoins">0</div>
+        <div class="hero-timers">
+            <div class="timer-card">
+                <div class="timer-label">Estimated</div>
+                <div class="timer-value" id="estimatedTime">—</div>
             </div>
-            <div class="stat">
-                <div class="stat-label">Elapsed Time</div>
-                <div class="stat-value" id="elapsedTime">00:00:00</div>
+            <div class="timer-card">
+                <div class="timer-label">Elapsed</div>
+                <div class="timer-value" id="elapsedTime">0:00</div>
+            </div>
+            <div class="timer-card saved">
+                <div class="timer-label" id="savedLabel">Saved</div>
+                <div class="timer-value" id="savedTime">—</div>
             </div>
         </div>
 
-        <div class="comparison">
-            <div class="comparison-label">Sequential vs Parallel</div>
-            <div class="comparison-bars">
-                <div class="comparison-bar comparison-sequential">
-                    <div class="comparison-fill" style="width: 100%;">Sequential 9h</div>
-                </div>
-                <div class="comparison-bar comparison-parallel">
-                    <div class="comparison-fill" style="width: 33.33%;">Parallel 3h</div>
-                </div>
-            </div>
+        <div class="hero-caption">Bob's estimate (sequential) vs actual parallel runtime</div>
+
+        <div class="coin-summary">
+            💰 <span class="coin-value" id="totalCoins">0.00</span> coins used
         </div>
     </div>
 
-    <div class="workers-grid">
-        <div class="worker-card accent-cyan" data-worker="0">
-            <div class="worker-header">
-                <div class="task-id" id="taskId0">Task #1</div>
-                <div class="status-badge status-queued" id="status0">Queued</div>
-            </div>
-            <div class="log-box" id="logs0"></div>
-            <div class="coin-counter">
-                <span>Bobcoins:</span>
-                <span class="coin-value" id="coins0">0</span>
-            </div>
-            <div class="progress-bar">
-                <div class="progress-fill" id="progress0" style="width: 0%;"></div>
-            </div>
-        </div>
-
-        <div class="worker-card accent-magenta" data-worker="1">
-            <div class="worker-header">
-                <div class="task-id" id="taskId1">Task #2</div>
-                <div class="status-badge status-queued" id="status1">Queued</div>
-            </div>
-            <div class="log-box" id="logs1"></div>
-            <div class="coin-counter">
-                <span>Bobcoins:</span>
-                <span class="coin-value" id="coins1">0</span>
-            </div>
-            <div class="progress-bar">
-                <div class="progress-fill" id="progress1" style="width: 0%;"></div>
-            </div>
-        </div>
-
-        <div class="worker-card accent-lime" data-worker="2">
-            <div class="worker-header">
-                <div class="task-id" id="taskId2">Task #3</div>
-                <div class="status-badge status-queued" id="status2">Queued</div>
-            </div>
-            <div class="log-box" id="logs2"></div>
-            <div class="coin-counter">
-                <span>Bobcoins:</span>
-                <span class="coin-value" id="coins2">0</span>
-            </div>
-            <div class="progress-bar">
-                <div class="progress-fill" id="progress2" style="width: 0%;"></div>
-            </div>
-        </div>
-
-        <div class="worker-card accent-orange" data-worker="3">
-            <div class="worker-header">
-                <div class="task-id" id="taskId3">Task #4</div>
-                <div class="status-badge status-queued" id="status3">Queued</div>
-            </div>
-            <div class="log-box" id="logs3"></div>
-            <div class="coin-counter">
-                <span>Bobcoins:</span>
-                <span class="coin-value" id="coins3">0</span>
-            </div>
-            <div class="progress-bar">
-                <div class="progress-fill" id="progress3" style="width: 0%;"></div>
-            </div>
+    <div class="empty-state" id="emptyState">
+        <div class="empty-state-icon">🤖</div>
+        <div class="empty-state-title">No active project</div>
+        <div class="empty-state-hint">
+            Start with: .\scripts\foreman-build.ps1 -ProjectDescription "..."
         </div>
     </div>
+
+    <div class="workers-grid" id="workersGrid"></div>
+
+    <div class="last-updated" id="lastUpdated">last updated: never</div>
 
     <script>
-        const MAX_COINS = 100;
-        let startTime = Date.now();
-        let isOffline = false;
+        const API_URL = 'http://192.168.179.250:3001/dashboard/status.json';
+        const POLL_INTERVAL = 1000;
+        const ACCENT_COLORS = ['#00f0ff', '#ff00ff', '#00ff80', '#ff8800'];
+        
+        let lastData = null;
+        let isOnline = false;
+        let lastUpdateTime = null;
+        let elapsedInterval = null;
+        let workerDoneStates = {};
 
-        function updateElapsedTime() {
-            const elapsed = Math.floor((Date.now() - startTime) / 1000);
-            const hours = Math.floor(elapsed / 3600);
-            const minutes = Math.floor((elapsed % 3600) / 60);
-            const seconds = elapsed % 60;
+        function formatTime(seconds) {
+            if (seconds == null || isNaN(seconds)) return '—';
             
-            document.getElementById('elapsedTime').textContent = 
-                `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            const absSeconds = Math.abs(seconds);
+            const minutes = Math.floor(absSeconds / 60);
+            const secs = Math.floor(absSeconds % 60);
+            const sign = seconds < 0 ? '-' : '';
+            
+            return `${sign}${minutes}:${String(secs).padStart(2, '0')}`;
         }
 
-        function updateWorkerCard(workerIndex, workerData) {
-            const taskId = workerData.taskId || `Task #${workerIndex + 1}`;
-            const status = workerData.status || 'queued';
-            const logs = workerData.logs || [];
-            const coins = workerData.coins || 0;
-
-            document.getElementById(`taskId${workerIndex}`).textContent = taskId;
+        function updateConnectionStatus(online) {
+            if (isOnline === online) return;
+            isOnline = online;
             
-            const statusBadge = document.getElementById(`status${workerIndex}`);
-            statusBadge.textContent = status;
-            statusBadge.className = `status-badge status-${status}`;
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+            
+            if (online) {
+                dot.classList.add('online');
+                text.textContent = 'live';
+            } else {
+                dot.classList.remove('online');
+                text.textContent = 'offline';
+            }
+        }
 
-            const logsContainer = document.getElementById(`logs${workerIndex}`);
-            const lastLogs = logs.slice(-10);
-            logsContainer.innerHTML = lastLogs.map(log => 
-                `<div class="log-line">${escapeHtml(log)}</div>`
-            ).join('');
-            logsContainer.scrollTop = logsContainer.scrollHeight;
+        function updateElapsedTimer() {
+            if (!lastData || !lastData.started_at) {
+                const elapsedEl = document.getElementById('elapsedTime');
+                const timerCard = elapsedEl.closest('.timer-card');
+                elapsedEl.textContent = '0:00';
+                timerCard.classList.add('muted');
+                return;
+            }
 
-            document.getElementById(`coins${workerIndex}`).textContent = coins;
+            const startTime = new Date(lastData.started_at).getTime();
+            const endTime = lastData.ended_at ? new Date(lastData.ended_at).getTime() : Date.now();
+            const elapsed = Math.floor((endTime - startTime) / 1000);
+            
+            const elapsedEl = document.getElementById('elapsedTime');
+            const timerCard = elapsedEl.closest('.timer-card');
+            
+            if (elapsedEl.textContent !== formatTime(elapsed)) {
+                elapsedEl.textContent = formatTime(elapsed);
+                timerCard.classList.remove('muted');
+            }
+        }
 
-            const progressPercent = (coins / MAX_COINS) * 100;
-            document.getElementById(`progress${workerIndex}`).style.width = `${progressPercent}%`;
+        function updateHeroTimers(data) {
+            // Estimated
+            const estimatedEl = document.getElementById('estimatedTime');
+            const estimatedValue = data.estimate_seconds != null ? formatTime(data.estimate_seconds) : '—';
+            if (estimatedEl.textContent !== estimatedValue) {
+                estimatedEl.textContent = estimatedValue;
+            }
+
+            // Elapsed (updated by interval)
+            updateElapsedTimer();
+
+            // Saved
+            const savedEl = document.getElementById('savedTime');
+            const savedLabel = document.getElementById('savedLabel');
+            const savedCard = savedEl.closest('.timer-card');
+            
+            if (data.estimate_seconds != null && data.started_at) {
+                const startTime = new Date(data.started_at).getTime();
+                const endTime = data.ended_at ? new Date(data.ended_at).getTime() : Date.now();
+                const elapsed = Math.floor((endTime - startTime) / 1000);
+                const saved = data.estimate_seconds - elapsed;
+                
+                const savedValue = formatTime(saved);
+                if (savedEl.textContent !== savedValue) {
+                    savedEl.textContent = savedValue;
+                }
+
+                savedCard.classList.remove('muted');
+                
+                if (saved < 0) {
+                    savedCard.classList.add('negative');
+                    savedCard.classList.remove('winner');
+                } else {
+                    savedCard.classList.remove('negative');
+                }
+
+                if (data.is_done && saved > 0) {
+                    savedCard.classList.add('winner');
+                    const percentage = Math.round((saved / data.estimate_seconds) * 100);
+                    const minutes = Math.floor(saved / 60);
+                    const secs = saved % 60;
+                    savedLabel.textContent = `🏆 You saved ${minutes}m ${secs}s (${percentage}% faster)`;
+                } else {
+                    savedCard.classList.remove('winner');
+                    savedLabel.textContent = 'Saved';
+                }
+            } else {
+                if (savedEl.textContent !== '—') {
+                    savedEl.textContent = '—';
+                }
+                savedCard.classList.add('muted');
+                savedCard.classList.remove('negative', 'winner');
+                savedLabel.textContent = 'Saved';
+            }
+        }
+
+        function updateWorkers(workers) {
+            const grid = document.getElementById('workersGrid');
+            
+            // Calculate total coins
+            let totalCoins = 0;
+            workers.forEach(w => {
+                totalCoins += w.coins_used || 0;
+            });
+            
+            const totalCoinsEl = document.getElementById('totalCoins');
+            const totalCoinsValue = totalCoins.toFixed(2);
+            if (totalCoinsEl.textContent !== totalCoinsValue) {
+                totalCoinsEl.textContent = totalCoinsValue;
+            }
+
+            // Update worker cards
+            const existingCards = grid.querySelectorAll('.worker-card');
+            const existingCount = existingCards.length;
+            
+            // Remove excess cards
+            if (existingCount > workers.length) {
+                for (let i = workers.length; i < existingCount; i++) {
+                    existingCards[i].remove();
+                }
+            }
+
+            // Update or create cards
+            workers.forEach((worker, index) => {
+                let card = existingCards[index];
+                
+                if (!card) {
+                    card = document.createElement('div');
+                    card.className = `worker-card accent-${index % 4}`;
+                    card.innerHTML = `
+                        <div class="worker-header">
+                            <div class="task-id"></div>
+                            <div class="status-badge"></div>
+                        </div>
+                        <div class="log-box"></div>
+                        <div class="coin-counter">
+                            <span>💰 Coins:</span>
+                            <span class="coin-value"></span>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                }
+
+                // Update task ID
+                const taskIdEl = card.querySelector('.task-id');
+                if (taskIdEl.textContent !== worker.id) {
+                    taskIdEl.textContent = worker.id;
+                }
+
+                // Update status badge
+                const statusBadge = card.querySelector('.status-badge');
+                const statusClass = `status-${worker.status}`;
+                if (!statusBadge.classList.contains(statusClass)) {
+                    statusBadge.className = `status-badge ${statusClass}`;
+                    statusBadge.textContent = worker.status;
+                }
+
+                // Flash animation on done
+                if (worker.status === 'done' && !workerDoneStates[worker.id]) {
+                    card.classList.add('done-flash');
+                    setTimeout(() => card.classList.remove('done-flash'), 600);
+                    workerDoneStates[worker.id] = true;
+                } else if (worker.status !== 'done') {
+                    workerDoneStates[worker.id] = false;
+                }
+
+                // Update logs
+                const logBox = card.querySelector('.log-box');
+                const logs = worker.log_tail || [];
+                const lastLogs = logs.slice(-5);
+                const logsHtml = lastLogs.map(log => 
+                    `<div class="log-line">${escapeHtml(log)}</div>`
+                ).join('');
+                
+                if (logBox.innerHTML !== logsHtml) {
+                    logBox.innerHTML = logsHtml;
+                    logBox.scrollTop = logBox.scrollHeight;
+                }
+
+                // Update coins
+                const coinValueEl = card.querySelector('.coin-value');
+                const coinValue = (worker.coins_used || 0).toFixed(2);
+                if (coinValueEl.textContent !== coinValue) {
+                    coinValueEl.textContent = coinValue;
+                }
+            });
         }
 
         function escapeHtml(text) {
@@ -375,41 +616,64 @@
             return div.innerHTML;
         }
 
+        function updateEmptyState(data) {
+            const emptyState = document.getElementById('emptyState');
+            const workersGrid = document.getElementById('workersGrid');
+            
+            const isEmpty = (!data.started_at && (!data.workers || data.workers.length === 0));
+            
+            if (isEmpty) {
+                emptyState.classList.add('show');
+                workersGrid.style.display = 'none';
+            } else {
+                emptyState.classList.remove('show');
+                workersGrid.style.display = 'grid';
+            }
+        }
+
+        function updateLastUpdated() {
+            if (!lastUpdateTime) return;
+            
+            const now = Date.now();
+            const diff = Math.floor((now - lastUpdateTime) / 1000);
+            
+            const lastUpdatedEl = document.getElementById('lastUpdated');
+            lastUpdatedEl.textContent = `last updated: ${diff}s ago`;
+        }
+
         async function fetchStatus() {
             try {
-                const response = await fetch('/dashboard/status.json');
+                const response = await fetch(API_URL);
                 if (!response.ok) throw new Error('Fetch failed');
                 
                 const data = await response.json();
                 
-                if (isOffline) {
-                    isOffline = false;
-                    document.getElementById('offlineBanner').classList.remove('show');
-                }
-
-                let totalCoins = 0;
-                const workers = data.workers || [];
+                updateConnectionStatus(true);
+                lastData = data;
+                lastUpdateTime = Date.now();
                 
-                for (let i = 0; i < 4; i++) {
-                    const workerData = workers[i] || {};
-                    updateWorkerCard(i, workerData);
-                    totalCoins += workerData.coins || 0;
+                updateHeroTimers(data);
+                updateEmptyState(data);
+                
+                if (data.workers && data.workers.length > 0) {
+                    updateWorkers(data.workers);
                 }
-
-                document.getElementById('totalCoins').textContent = totalCoins;
 
             } catch (error) {
-                if (!isOffline) {
-                    isOffline = true;
-                    document.getElementById('offlineBanner').classList.add('show');
-                }
+                updateConnectionStatus(false);
             }
         }
 
-        setInterval(updateElapsedTime, 1000);
-        setInterval(fetchStatus, 1000);
+        // Start elapsed timer (updates every 100ms for smooth counting)
+        elapsedInterval = setInterval(updateElapsedTimer, 100);
+
+        // Update "last updated" timestamp every second
+        setInterval(updateLastUpdated, 1000);
+
+        // Poll API
+        setInterval(fetchStatus, POLL_INTERVAL);
         
-        updateElapsedTime();
+        // Initial fetch
         fetchStatus();
     </script>
 </body>
