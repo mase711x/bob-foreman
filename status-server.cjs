@@ -53,10 +53,16 @@ function getFileModTime(filePath) {
 }
 
 // Helper function to extract coins from log JSON
+// Parses sessionCost from Bob CLI output (stats.sessionCost field)
 function extractCoins(logData) {
   if (!logData) return 0;
   
-  // Search for coin-related fields
+  // Check for sessionCost in stats object (Bob CLI standard output)
+  if (logData.stats && typeof logData.stats.sessionCost === 'number') {
+    return logData.stats.sessionCost;
+  }
+  
+  // Fallback: search for coin-related fields
   if (logData.usage && typeof logData.usage.coins === 'number') {
     return logData.usage.coins;
   }
