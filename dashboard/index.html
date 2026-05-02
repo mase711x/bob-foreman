@@ -343,6 +343,158 @@
             border-radius: 5px;
         }
 
+        .issues-card {
+            background-color: #1a1a1f;
+            border-radius: 10px;
+            padding: 25px;
+            margin-top: 30px;
+            border: 1px solid #333;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .issues-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #00f0ff;
+        }
+
+        .issues-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            gap: 40px;
+        }
+
+        .issues-stat-group {
+            text-align: center;
+            flex: 1;
+        }
+
+        .issues-stat-label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .issues-stat-value {
+            font-size: 42px;
+            font-weight: bold;
+            color: #00f0ff;
+            transition: all 0.3s ease;
+        }
+
+        .issues-stat-value.pulse {
+            animation: value-pulse 0.6s ease-out;
+        }
+
+        @keyframes value-pulse {
+            0% {
+                transform: scale(1);
+                color: #00f0ff;
+            }
+            50% {
+                transform: scale(1.15);
+                color: #51cf66;
+                text-shadow: 0 0 20px rgba(81, 207, 102, 0.8);
+            }
+            100% {
+                transform: scale(1);
+                color: #00f0ff;
+            }
+        }
+
+        .issues-stat-detail {
+            font-size: 13px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .issues-toggle {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .issues-toggle-btn {
+            background: none;
+            border: 1px solid #333;
+            color: #888;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: Consolas, monospace;
+            font-size: 13px;
+            transition: all 0.3s ease;
+        }
+
+        .issues-toggle-btn:hover {
+            border-color: #00f0ff;
+            color: #00f0ff;
+        }
+
+        .issues-list {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .issues-list.expanded {
+            max-height: 400px;
+            overflow-y: auto;
+            border-top: 1px solid #333;
+            padding-top: 20px;
+        }
+
+        .intervention-item {
+            background-color: #0a0a0f;
+            border-left: 3px solid #00f0ff;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+
+        .intervention-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .intervention-commit {
+            color: #888;
+            font-family: 'Courier New', monospace;
+        }
+
+        .intervention-file {
+            color: #00f0ff;
+        }
+
+        .intervention-issue {
+            color: #ff6b6b;
+            margin-bottom: 5px;
+            font-size: 13px;
+        }
+
+        .intervention-fix {
+            color: #51cf66;
+            font-size: 13px;
+        }
+
+        .issues-placeholder {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            padding: 20px;
+        }
+
         @media (max-width: 600px) {
             .hero-timers {
                 flex-direction: column;
@@ -355,6 +507,11 @@
 
             .workers-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .issues-stats {
+                flex-direction: column;
+                gap: 20px;
             }
         }
     </style>
@@ -400,11 +557,37 @@
 
     <div class="workers-grid" id="workersGrid"></div>
 
+    <div class="issues-card" id="issuesCard">
+        <div class="issues-header">
+            🛠️ ISSUES AUTO-FIXED
+        </div>
+        <div class="issues-stats">
+            <div class="issues-stat-group">
+                <div class="issues-stat-label">This run</div>
+                <div class="issues-stat-value" id="issuesThisRun">0</div>
+                <div class="issues-stat-detail" id="issuesThisRunDetail">fixed of 0 found</div>
+            </div>
+            <div class="issues-stat-group">
+                <div class="issues-stat-label">Lifetime</div>
+                <div class="issues-stat-value" id="issuesLifetime">0</div>
+                <div class="issues-stat-detail" id="issuesLifetimeDetail">across 0 runs</div>
+            </div>
+        </div>
+        <div class="issues-toggle">
+            <button class="issues-toggle-btn" id="issuesToggleBtn">▼ Show interventions</button>
+        </div>
+        <div class="issues-list" id="issuesList">
+            <div class="issues-placeholder" id="issuesPlaceholder">No reviewer runs yet</div>
+        </div>
+    </div>
+
     <div class="last-updated" id="lastUpdated">last updated: never</div>
 
     <script>
         const API_URL = 'http://192.168.179.250:3001/dashboard/status.json';
+        const REVIEWER_API_URL = 'http://localhost:8765/api/reviewer';
         const POLL_INTERVAL = 1000;
+        const REVIEWER_POLL_INTERVAL = 2000;
         const ACCENT_COLORS = ['#00f0ff', '#ff00ff', '#00ff80', '#ff8800'];
         
         let lastData = null;
@@ -412,6 +595,8 @@
         let lastUpdateTime = null;
         let elapsedInterval = null;
         let workerDoneStates = {};
+        let lastReviewerData = null;
+        let issuesExpanded = false;
 
         function formatTime(seconds) {
             if (seconds == null || isNaN(seconds)) return '—';
