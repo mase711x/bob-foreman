@@ -1,0 +1,72 @@
+Mission: Add a new "Issues Auto-Fixed" card to the Bob Foreman Live dashboard, with live counter and expandable intervention list.
+
+Your scope (you may ONLY modify):
+  - dashboard/index.html (additive — add new card section, leave existing layout intact)
+
+Files you must read first:
+  - V3-PLAN.md at repo root (the spec)
+  - dashboard/index.html (entire existing file — understand the styling, the existing cards layout, the polling mechanism for /api/status)
+  - The /api/reviewer endpoint contract is in v3-status-api worker's V3-PLAN.md section — but you don't need to read that worker's prompt; the endpoint shape is in V3-PLAN.md
+
+What you must NOT touch:
+  - The existing top-bar (Estimated / Elapsed / Saved counters)
+  - The existing worker grid (the per-worker cards)
+  - The "coins used" line (another worker, v3-coin-fix, may modify how it's populated)
+  - status-server.cjs (another worker)
+  - Any file outside dashboard/index.html
+
+What to add:
+
+A new card, placed BELOW the worker grid (so it doesn't disturb the existing 6-card layout). Visual structure:
+
+```
++-------------------------------------------------------------+
+|  🛠 ISSUES AUTO-FIXED                                       |
+|                                                             |
+|  This run                            Lifetime               |
+|     5                                   38                  |
+|  fixed of 7 found                    across 12 runs         |
+|                                                             |
+|  [▼ Show interventions]                                     |
++-------------------------------------------------------------+
+```
+
+When the user clicks "Show interventions", the card expands to show a
+scrollable list of recent interventions (commit hash, file, issue, fix).
+
+Behavior:
+  - Poll http://<host>:8765/api/reviewer every 2 seconds (match the existing dashboard's polling cadence — read the existing file to find the interval, use the same)
+  - When the response shape changes (new value for auto_fixed), pulse the counter briefly (CSS animation, e.g. brief glow)
+  - If both summary.auto_fixed and lifetime.total_auto_fixed are 0, show the card with "No reviewer runs yet" placeholder text — don't hide it
+  - Errors fetching /api/reviewer: log to console, do not break the page
+
+Styling rules:
+  - Match the existing dashboard's color scheme (read the file — looks like dark theme with teal/cyan accents based on screenshots)
+  - Match the existing card border-radius, padding, font family
+  - The "this run" big number should be the same size as the existing top-bar counters
+  - The expandable list, when open, max-height ~400px with scroll
+  - The "🛠" emoji is fine; if you prefer an inline SVG hammer icon, that works too
+
+Constraints:
+  - DO NOT add external CSS or JS files — keep everything inline (the existing dashboard is a single HTML file)
+  - DO NOT install dependencies — vanilla JS only
+  - DO NOT change the polling logic of /api/status — add a SECOND independent polling for /api/reviewer
+  - DO NOT use frameworks (no React, no Vue) — vanilla JS, just like the existing code
+  - Use the SAME polling pattern as the existing /api/status fetch — match the codebase style
+
+Verification before claiming done — ALL must pass:
+  - Open dashboard/index.html in a browser (with the server running locally)
+  - The new "Issues Auto-Fixed" card is visible, below the worker grid
+  - With NO reviewer.json: card shows zeros and "No reviewer runs yet" — confirmed visually in the browser
+  - Place a fake .foreman/tasks/reviewer.json with values 5 fixed / 7 found
+  - Within 2-3 seconds of placing the file, the card values update to 5 / 7 — confirmed visually in the browser (do not just claim "polling code is there")
+  - Click the "Show interventions" toggle — the list expands and shows sample interventions
+  - Existing dashboard counters (Estimated / Elapsed / Saved / Coins / Worker grid) all unchanged — visual regression check
+  - DONE means: browser tab open, card visible, polling working, values updating live. Not "HTML written". RENDERS and POLLS.
+
+Commit:
+  - Branch: worker/v3-dashboard-card
+  - Message: `feat: add Issues Auto-Fixed card to dashboard`
+  - One commit.
+
+Done = card renders, polls /api/reviewer, integrates with dashboard styling, verification passes.
