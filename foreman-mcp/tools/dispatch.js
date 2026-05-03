@@ -38,9 +38,13 @@ export const tool = {
       const repoRoot = getRepoRoot();
       const missingPrompts = [];
 
+      // Debug: log repoRoot for troubleshooting
+      console.error(`[dispatch] repoRoot: ${repoRoot}`);
+
       // Validate prompt files exist
       for (const taskId of args.task_ids) {
         const promptPath = join(repoRoot, '.foreman-prompts', `${taskId}.txt`);
+        console.error(`[dispatch] checking: ${promptPath} -> ${existsSync(promptPath)}`);
         if (!existsSync(promptPath)) {
           missingPrompts.push(taskId);
         }

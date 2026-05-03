@@ -4,14 +4,12 @@ import { dirname, join } from 'path';
 
 /**
  * Returns the absolute path to the foreman repo root.
- * Computed as two directories above this file (foreman-mcp/lib/ → foreman-mcp/ → REPO_ROOT)
+ * Uses process.cwd() because when loaded via MCP by Bob, import.meta.url
+ * points to Bob's internal module cache, not the actual disk location.
  */
 export function getRepoRoot() {
-  const currentFile = fileURLToPath(import.meta.url);
-  const libDir = dirname(currentFile);
-  const foremanMcpDir = dirname(libDir);
-  const repoRoot = dirname(foremanMcpDir);
-  return repoRoot;
+  // Assume MCP server is started from repo root (standard practice)
+  return process.cwd();
 }
 
 /**
@@ -53,14 +51,14 @@ export function runForemanBuild({ projectDescription, taskIds, maxCoinsPerWorker
 
   const fullCommand = psCommand.join(' ');
 
-  // Spawn as detached background process
-  const child = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', fullCommand], {
-    detached: true,
+  // Windows: Use Start-Process for proper background execution
+  // spawn() with detached:true silently fails on Windows
+  const startProcessCmd = `Start-Process powershell.exe -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','${scriptPath}','-ProjectDescription','${sanitizedDescription}','-TaskIds',${taskIdsArray},'-MaxCoinsPerWorker',${maxCoinsPerWorker}${skipEstimate ? ',"-SkipEstimate"' : ''} -WindowStyle Hidden -WorkingDirectory '${repoRoot}'`;
+  
+  const child = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', startProcessCmd], {
     stdio: 'ignore',
     cwd: repoRoot
   });
-
-  child.unref();
 
   const jobId = `mcp-${Date.now()}`;
   const dashboardUrl = 'http://192.168.178.86:8765/dashboard.html';
@@ -73,3 +71,5 @@ export function runForemanBuild({ projectDescription, taskIds, maxCoinsPerWorker
     pid: child.pid
   };
 }
+
+// Made with Bob
