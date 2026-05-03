@@ -9,14 +9,21 @@ $ErrorActionPreference = 'Stop'
 $root = 'C:\Users\tribe\bob-foreman'
 Set-Location $root
 
+# Generate job_id: yyyyMMdd-HHmmss-<4randomchars>
+$timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+$randomChars = -join ((65..90) + (97..122) | Get-Random -Count 4 | ForEach-Object {[char]$_})
+$jobId = "$timestamp-$randomChars"
+
 Write-Host ''
 Write-Host 'FOREMAN BUILD' -ForegroundColor Cyan
+Write-Host "  Job ID:   $jobId"
 Write-Host "  Project:  $ProjectDescription"
 Write-Host "  Tasks:    $($TaskIds -join ', ')"
 Write-Host "  Coin cap: $MaxCoinsPerWorker per worker"
 Write-Host ''
 
-New-Item -ItemType Directory -Force -Path "$root\.foreman\tasks" | Out-Null
+New-Item -ItemType Directory -Force -Path "$root/.foreman/tasks" | Out-Null
+New-Item -ItemType Directory -Force -Path "$root/.foreman/runs/$jobId" | Out-Null
 
 # Step 1: Reset state from any previous run
 Remove-Item "$root\.foreman\start_time.txt" -ErrorAction SilentlyContinue
@@ -37,19 +44,28 @@ if (-not $SkipEstimate) {
     
     $match = [regex]::Match($estimateRaw, '\{[^{}]*total_seconds[^{}]*\}')
     if ($match.Success) {
-        $match.Value | Set-Content "$root\.foreman\estimate.json" -NoNewline
+        # Write to both legacy location and per-run directory
+        $match.Value | Set-Content "$root/.foreman/estimate.json" -NoNewline
+        $match.Value | Set-Content "$root/.foreman/runs/$jobId/estimate.json" -NoNewline
         Write-Host "    Estimate written: $($match.Value)" -ForegroundColor Green
     } else {
         Write-Host '    Could not parse estimate, fallback to 600s' -ForegroundColor Yellow
-        '{"total_seconds": 600}' | Set-Content "$root\.foreman\estimate.json" -NoNewline
+        '{"total_seconds": 600}' | Set-Content "$root/.foreman/estimate.json" -NoNewline
+        '{"total_seconds": 600}' | Set-Content "$root/.foreman/runs/$jobId/estimate.json" -NoNewline
     }
-} elseif (-not (Test-Path "$root\.foreman\estimate.json")) {
-    '{"total_seconds": 600}' | Set-Content "$root\.foreman\estimate.json" -NoNewline
+} elseif (-not (Test-Path "$root/.foreman/estimate.json")) {
+    '{"total_seconds": 600}' | Set-Content "$root/.foreman/estimate.json" -NoNewline
+    '{"total_seconds": 600}' | Set-Content "$root/.foreman/runs/$jobId/estimate.json" -NoNewline
+} else {
+    # Copy existing estimate to per-run directory when skipping
+    Copy-Item "$root/.foreman/estimate.json" "$root/.foreman/runs/$jobId/estimate.json"
 }
 
 # Step 3: Mark start time
 Write-Host '[2/5] Starting timer...' -ForegroundColor Yellow
-(Get-Date).ToUniversalTime().ToString('o') | Set-Content "$root\.foreman\start_time.txt" -Encoding ASCII -NoNewline
+$startIso = (Get-Date).ToUniversalTime().ToString('o')
+$startIso | Set-Content "$root/.foreman/start_time.txt" -Encoding ASCII -NoNewline
+@{start_iso=$startIso} | ConvertTo-Json -Compress | Set-Content "$root/.foreman/runs/$jobId/start.json" -NoNewline
 
 # Step 4: Spawn workers as background jobs
 Write-Host "[3/5] Spawning $($TaskIds.Count) workers..." -ForegroundColor Yellow
@@ -83,7 +99,13 @@ Write-Host "[4/5] Waiting for $($jobs.Count) workers (live updates on dashboard)
 $jobs | Wait-Job | Out-Null
 
 # Step 6: Mark end + show results
-(Get-Date).ToUniversalTime().ToString('o') | Set-Content "$root\.foreman\end_time.txt" -Encoding ASCII -NoNewline
+$endIso = (Get-Date).ToUniversalTime().ToString('o')
+$endIso | Set-Content "$root/.foreman/end_time.txt" -Encoding ASCII -NoNewline
+@{end_iso=$endIso} | ConvertTo-Json -Compress | Set-Content "$root/.foreman/runs/$jobId/end.json" -NoNewline
+
+# Write tasks.json to per-run directory
+$tasksData = @{job_id=$jobId; task_ids=$TaskIds}
+$tasksData | ConvertTo-Json -Compress | Set-Content "$root/.foreman/runs/$jobId/tasks.json" -NoNewline
 
 Write-Host ''
 Write-Host '[5/5] DONE' -ForegroundColor Cyan
