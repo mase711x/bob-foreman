@@ -1,0 +1,123 @@
+Mission: Build the foundation of foreman-mcp/ — an MCP (Model Context Protocol) server that exposes Bob Foreman as tools callable from Bob IDE. You are Wave 1 of a two-wave build. Wave 2 (3 parallel workers) will create individual tool files in tools/ that depend on the foundation you write.
+
+Your scope (you may ONLY create these files, no others):
+  - foreman-mcp/package.json
+  - foreman-mcp/server.js
+  - foreman-mcp/lib/runner.js
+  - foreman-mcp/lib/contract.md
+  - foreman-mcp/README.md
+  - foreman-mcp/tools/.gitkeep (empty placeholder)
+
+Files you must NOT touch:
+  - Anything outside foreman-mcp/ (do NOT modify status-server.cjs, scripts/*, dashboard/*, .foreman-prompts/*, or any v3 files)
+  - Do NOT call .\scripts\foreman-build.ps1 yourself — you are writing CODE that will be invoked LATER, you do not execute it
+  - Do NOT create tools/dispatch.js, tools/status.js, or tools/bauleiter.js — those are Wave 2's job
+
+Files you must read first (for context):
+  - scripts/foreman-build.ps1 (you'll be shelling out to this from runner.js)
+  - .foreman/tasks/*.json (one of these — see the JSON shape your status-tool sibling will read)
+  - status-server.cjs lines 130-200 (see how status data flows in the existing system)
+
+CONTRACT FOR WAVE 2: Wave 2 workers will read your foreman-mcp/lib/contract.md to understand how to write their tools. Make contract.md crystal-clear and complete. It is the API specification.
+
+Required content for each file:
+
+============================================================
+foreman-mcp/package.json
+============================================================
+{
+  "name": "foreman-mcp",
+  "version": "0.1.0",
+  "description": "MCP server exposing Bob Foreman as tools callable from Bob IDE and other MCP clients",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
+
+============================================================
+foreman-mcp/server.js
+============================================================
+Bootstrap an MCP server using @modelcontextprotocol/sdk. Dynamically loads ALL .js files from the tools/ directory (NOT static imports — use readdirSync + dynamic import) and registers each module's exported `tool` object.
+
+Key requirements:
+  - Use ES modules (import/export, NOT require)
+  - Use StdioServerTransport
+  - Server name: "foreman", version: "0.1.0"
+  - On startup, log to stderr (NOT stdout — stdout is reserved for MCP protocol): "Foreman MCP loaded N tools: <names>"
+  - For each tool call, wrap handler in try/catch; on error return { content: [{type:"text", text: "Error: <msg>"}], isError: true }
+  - Tool list comes from scanning tools/*.js — each module exports `export const tool = {...}`
+  - If tools/ is empty (Wave 1 standalone), server still starts and reports "loaded 0 tools"
+
+============================================================
+foreman-mcp/lib/runner.js
+============================================================
+Helper module exporting two functions:
+
+1. `runForemanBuild({ projectDescription, taskIds, maxCoinsPerWorker = 3, skipEstimate = false })`
+   - Spawns powershell.exe with -NoProfile -ExecutionPolicy Bypass to run scripts/foreman-build.ps1
+   - Resolves the repo root as two directories above this file (foreman-mcp/lib/ → foreman-mcp/ → REPO_ROOT)
+   - Use child_process.spawn with detached: true and stdio: 'ignore', then child.unref() — fire-and-forget
+   - Sanitize projectDescription: replace single quotes with double single quotes for PowerShell
+   - taskIds becomes PowerShell array literal: @('id1','id2',...)
+   - Returns { job_id, dashboard_url, started_at, pid }
+     - job_id: `mcp-${Date.now()}`
+     - dashboard_url: "http://192.168.178.86:8765/dashboard.html"
+     - started_at: new Date().toISOString()
+   - Throw if taskIds is not a non-empty array
+
+2. `getRepoRoot()` — returns the absolute path to the foreman repo root, computed from import.meta.url
+
+============================================================
+foreman-mcp/lib/contract.md
+============================================================
+A markdown spec for tool authors (Wave 2). Must include:
+  - The exact shape every tool module must export: `export const tool = { name, description, inputSchema, handler }`
+  - inputSchema is a JSON Schema object
+  - handler signature: `async (args) => ({ content: [{type:"text", text:"..."}], isError?: boolean })`
+  - How to import the runner: `import { runForemanBuild, getRepoRoot } from "../lib/runner.js"`
+  - How to read task JSON: `readFileSync(path.join(getRepoRoot(), ".foreman/tasks/<id>.json"), "utf8")`
+  - Sample tool boilerplate (5-10 lines) Wave 2 can copy
+  - Tool naming convention: dot-namespaced (foreman.dispatch, foreman.status, bauleiter.plan)
+
+============================================================
+foreman-mcp/README.md
+============================================================
+~30 lines. Sections:
+  - One-paragraph what-it-does
+  - Install: `cd foreman-mcp && npm install`
+  - Register in Bob IDE: how to add to .bob/mcp.json (give the JSON snippet)
+  - Available tools: list with one-line descriptions
+  - Run standalone: `npm start` (for debugging via stdio)
+
+============================================================
+foreman-mcp/tools/.gitkeep
+============================================================
+Empty file. Just so the directory is committed.
+
+Verification before claiming done:
+  - All 6 files exist at the paths above
+  - `node -c foreman-mcp/server.js` exits 0 (syntax check)
+  - `node -c foreman-mcp/lib/runner.js` exits 0
+  - foreman-mcp/lib/contract.md is at least 30 lines
+  - foreman-mcp/package.json is valid JSON (`node -e "JSON.parse(require('fs').readFileSync('foreman-mcp/package.json'))"`)
+
+Constraints:
+  - No npm install — leave that to the user. Just create package.json with the right dependency.
+  - No external HTTP calls
+  - No modifications to anything outside foreman-mcp/
+  - Use ESM throughout. type: "module" in package.json, import/export everywhere.
+
+Commit:
+  - Branch: worker/mcp-foundation
+  - Message: feat: foreman-mcp foundation (server, runner, contract)
+  - One commit.
+
+Done = all 6 files exist, syntax checks pass, contract.md is complete enough that Wave 2 workers can build tools from it alone.

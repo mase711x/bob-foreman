@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "foreman": {
+      "command": "node",
+      "args": ["C:\\Users\\tribe\\bob-foreman\\foreman-mcp\\server.js"]
+    }
+  }
+}

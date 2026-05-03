@@ -1,0 +1,92 @@
+Mission: Create the bauleiter.plan MCP tool. This is one of three Wave 2 tools that consume the foundation built by Wave 1 (mcp-foundation, already merged to master). Bauleiter ("foreman-of-foremans" / construction-site supervisor) is a higher-level planning layer: it takes an epic-sized goal and decomposes it into multiple parallel Foreman tracks using a static template.
+
+This tool is the demo-headline. It demonstrates the recursive scaling pattern: Bob → Foreman (N workers) → Bauleiter (N Foremans). For the hackathon scope, Bauleiter uses STATIC track templates (no Bob plan-mode call — keeps it deterministic and free of extra coin cost).
+
+Your scope (you may ONLY create this file, no others):
+  - foreman-mcp/tools/bauleiter.js
+
+Files you must NOT touch:
+  - foreman-mcp/server.js (Wave 1's, frozen)
+  - foreman-mcp/lib/* (Wave 1's, frozen — read but never modify)
+  - foreman-mcp/package.json (Wave 1's, frozen)
+  - foreman-mcp/tools/dispatch.js (parallel sibling — another worker owns it)
+  - foreman-mcp/tools/status.js (parallel sibling — another worker owns it)
+  - Anything outside foreman-mcp/
+
+Files you must read first:
+  - foreman-mcp/lib/contract.md (the API spec — your tool MUST conform)
+  - foreman-mcp/lib/runner.js (you import runForemanBuild from here for auto_dispatch mode)
+
+Tool specification:
+
+Name: bauleiter.plan
+Description (shown in Bob IDE): "Manager-of-Foremans: decompose a large epic into multiple parallel Foreman tracks using a track template. Returns a plan; if auto_dispatch is true, also dispatches all tracks via foreman.dispatch immediately."
+
+inputSchema (JSON Schema):
+  type: object
+  required: ["epic_description"]
+  properties:
+    epic_description:
+      type: string
+      description: "High-level project goal (e.g. 'Build a URL shortener with analytics dashboard')"
+    template:
+      type: string
+      enum: ["fullstack", "api_only", "frontend_only"]
+      default: "fullstack"
+      description: "Track template determining how the epic is decomposed"
+    max_coins_per_worker:
+      type: number
+      default: 3
+      minimum: 1
+      maximum: 10
+    auto_dispatch:
+      type: boolean
+      default: false
+      description: "If true, immediately dispatch all tracks via Foreman after planning. If false, only return the plan for review."
+
+Track templates (constant in your file):
+  TRACK_TEMPLATES = {
+    fullstack:      ["backend-api", "frontend-ui", "tests", "docs"],
+    api_only:       ["api-endpoints", "api-tests", "api-docs"],
+    frontend_only:  ["ui-components", "ui-pages", "ui-tests"]
+  }
+
+handler implementation:
+  - Validate template is one of the three keys; if not, return isError listing valid templates
+  - Build the plan object:
+    {
+      epic: <epic_description>,
+      template: <template>,
+      tracks: [{ id: "backend-api", role: "backend api" }, ...],   // role = id with hyphens replaced by spaces
+      total_workers: tracks.length,
+      estimated_max_coins: tracks.length * max_coins_per_worker
+    }
+  - If auto_dispatch is FALSE:
+    - Return content text:
+      "Bauleiter plan ready (NOT yet dispatched):\n\n<JSON.stringify(plan, null, 2)>\n\nIMPORTANT: Each track in tracks[] requires a corresponding .foreman-prompts/<track_id>.txt brief file before dispatch will succeed. To execute: call bauleiter.plan again with auto_dispatch=true OR call foreman.dispatch with the listed task_ids."
+  - If auto_dispatch is TRUE:
+    - Call runForemanBuild({ projectDescription: epic_description, taskIds: <track ids>, maxCoinsPerWorker: max_coins_per_worker })
+    - Return content text:
+      "Bauleiter dispatched <N> parallel tracks for: <epic>\n\nTracks:\n- backend-api\n- frontend-ui\n...\n\nJob ID: <id>\nDashboard: <url>\nStarted: <iso>\n\nUse foreman.status to poll progress."
+
+Constraints:
+  - Use ESM (import/export)
+  - No new dependencies — only Node built-ins plus runner.js
+  - Do NOT call Bob plan-mode, do NOT do any LLM-based decomposition. Templates are STATIC.
+  - Do NOT spawn the powershell process yourself — always go through runForemanBuild
+  - Total file length under 100 lines
+  - Do NOT execute or spawn any actual Bob workers. You write the JS file; running it is the user's job after merge.
+
+Verification before claiming done:
+  - foreman-mcp/tools/bauleiter.js exists
+  - `node -c foreman-mcp/tools/bauleiter.js` exits 0
+  - Exports `tool` as a named export
+  - Both auto_dispatch=true and auto_dispatch=false code paths are present
+  - Template validation rejects unknown values
+
+Commit:
+  - Branch: worker/mcp-bauleiter
+  - Message: feat: bauleiter.plan MCP tool (Manager-of-Foremans)
+  - One commit.
+
+Done = file exists, syntax check passes, exports `tool`, both code paths implemented, template validation in place.

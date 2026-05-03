@@ -1,0 +1,204 @@
+﻿node.exe : YOLO mode is enabled. All tool calls will be automatically approved.
+In C:\Users\tribe\AppData\Roaming\npm\bob.ps1:24 Zeichen:5
++     & "node$exe"  "$basedir/node_modules/bobshell/bundle/bob.js" $arg ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (YOLO mode is en...cally approved.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Failed to setup git notes configuration: Error: ENOTDIR: not a directory, mkdir 
+'C:\Users\tribe\bob-foreman\worktrees\v3-reviewer-prompt\.git'
+    at async Module.mkdir (node:internal/fs/promises:859:10)
+    at async pqs (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:1825:106)
+    at async Promise.all (index 0)
+    at async T9n (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:1843:1043)
+    at async dnt.setup (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2150:2481)
+    at async R9n (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2169:446)
+    at async file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2169:1965
+    at async LZt (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2169:1523)
+    at async j3.refreshAuth (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:3480:27997)
+    at async uBi (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:4636:1081) {
+  errno: -4052,
+  code: 'ENOTDIR',
+  syscall: 'mkdir',
+  path: 'C:\\Users\\tribe\\bob-foreman\\worktrees\\v3-reviewer-prompt\\.git'
+}
+---output---
+Index: reviewer.txt
+===================================================================
+--- reviewer.txt	Original
++++ reviewer.txt	Written
+@@ -0,0 +1,50 @@
++Review the git diff and fix issues or log them as skipped.
++
++TARGET DIFF:
++Default: master~6..HEAD (covers the 6 v3 worker merges)
++Override via env var REVIEW_TARGET if needed.
++
++ISSUE CATEGORIES (defined in your Custom Mode rules):
++- Security: SQL injection, XSS, missing auth, secret leaks
++- Performance: N+1 queries, missing indexes, sync I/O in hot paths
++- Error handling: missing try/catch, swallowed errors, no resource cleanup
++- Code smells: dead code, unclear names, magic numbers
++
++DECISION LOGIC:
++For each issue found, choose one:
++  SIMPLE FIX: Small, local, low-risk change
++    ÔåÆ Commit with prefix "fix: " and clear message
++    ÔåÆ Example: "fix: add try/catch to db.connect in server.js"
++  
++  COMPLEX: Cross-cutting, refactor needed, or ambiguous
++    ÔåÆ Log as skipped with one-line reason
++    ÔåÆ Example: "Skipped: N+1 in /api/workers needs query redesign"
++
++When in doubt, skip and log. Aggressive skipping is preferred over risky fixes.
++
++OUTPUT FILES:
++1. .foreman/tasks/reviewer.json
++   Schema: See V3-PLAN.md (run_id, summary{issues_found, auto_fixed, skipped}, interventions[])
++   
++2. .foreman/reviewer-history.json
++   Read existing if present, increment lifetime totals, append this run to runs[]
++   Schema: See V3-PLAN.md (lifetime{total_runs, total_issues_found, total_auto_fixed, total_skipped}, runs[])
++
++NEVER TOUCH:
++- .foreman-prompts/* (sacred, no recursion)
++- V3-PLAN.md
++- scripts/foreman-review.ps1
++- .foreman-prompts/reviewer.txt (this file)
++- LICENSE, README.md, CHANGELOG.md
++
++STDOUT:
++Print exactly one line when done:
++Reviewer done: N found, M fixed, K skipped
++
++WORKFLOW:
++1. Read diff (git diff master~6..HEAD or $env:REVIEW_TARGET)
++2. For each hunk, evaluate against issue categories
++3. Fix or skip each issue
++4. Write .foreman/tasks/reviewer.json
++5. Update .foreman/reviewer-history.json
++6. Print summary line
+
+---output---
+---output---
+fatal: a branch named 'worker/v3-reviewer-prompt' already exists
+---output---
+---output---
+M       .bob/notes/pending-notes.txt                                            
+Already on 'worker/v3-reviewer-prompt'
+---output---
+---output---
+warning: in the working copy of '.foreman-prompts/reviewer.txt', LF will be repl
+aced by CRLF the next time Git touches it
+---output---
+---output---
+[worker/v3-reviewer-prompt 5156ad6] feat: add reviewer-bob prompt template      
+ 1 file changed, 50 insertions(+)                                               
+ create mode 100644 .foreman-prompts/reviewer.txt
+---output---
+---output---
+
+Reviewer prompt created at .foreman-prompts/reviewer.txt (50 lines).
+
+Key sections:
+- Target diff: master~6..HEAD (overridable via REVIEW_TARGET env var)
+- Issue categories: security, performance, error handling, code smells
+- Decision logic: simple fixes get committed with "fix:" prefix, complex issues logged as skipped
+- Output files: .foreman/tasks/reviewer.json + .foreman/reviewer-history.json (schemas referenced from V3-PLAN.md)
+- Protected files: .foreman-prompts/*, V3-PLAN.md, scripts/foreman-review.ps1, LICENSE, README.md, CHANGELOG.md
+- Stdout format: "Reviewer done: N found, M fixed, K skipped"
+
+Committed to worker/v3-reviewer-prompt branch.
+
+---output---
+{
+  "response": "",
+  "stats": {
+    "models": {
+      "premium": {
+        "api": {
+          "totalRequests": 10,
+          "totalErrors": 0,
+          "totalLatencyMs": 67398
+        },
+        "tokens": {
+          "prompt": 140949,
+          "candidates": 2641,
+          "total": 143590,
+          "cached": 121119,
+          "thoughts": 0,
+          "tool": 0
+        }
+      }
+    },
+    "tools": {
+      "totalCalls": 10,
+      "totalSuccess": 10,
+      "totalFail": 0,
+      "totalDurationMs": 7708,
+      "totalDecisions": {
+        "accept": 0,
+        "reject": 0,
+        "modify": 0,
+        "auto_accept": 10
+      },
+      "byName": {
+        "read_file": {
+          "count": 4,
+          "success": 4,
+          "fail": 0,
+          "durationMs": 7,
+          "decisions": {
+            "accept": 0,
+            "reject": 0,
+            "modify": 0,
+            "auto_accept": 4
+          }
+        },
+        "write_to_file": {
+          "count": 1,
+          "success": 1,
+          "fail": 0,
+          "durationMs": 55,
+          "decisions": {
+            "accept": 0,
+            "reject": 0,
+            "modify": 0,
+            "auto_accept": 1
+          }
+        },
+        "execute_command": {
+          "count": 4,
+          "success": 4,
+          "fail": 0,
+          "durationMs": 7645,
+          "decisions": {
+            "accept": 0,
+            "reject": 0,
+            "modify": 0,
+            "auto_accept": 4
+          }
+        },
+        "attempt_completion": {
+          "count": 1,
+          "success": 1,
+          "fail": 0,
+          "durationMs": 1,
+          "decisions": {
+            "accept": 0,
+            "reject": 0,
+            "modify": 0,
+            "auto_accept": 1
+          }
+        }
+      }
+    },
+    "files": {
+      "totalLinesAdded": 50,
+      "totalLinesRemoved": 0
+    },
+    "budgetSpend": 3.79,
+    "maxBudget": 40,
+    "sessionCost": 0.35897300000000004
+  }
+}

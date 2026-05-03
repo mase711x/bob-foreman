@@ -1,0 +1,107 @@
+﻿node.exe : YOLO mode is enabled. All tool calls will be automatically approved.
+In C:\Users\tribe\AppData\Roaming\npm\bob.ps1:24 Zeichen:5
++     & "node$exe"  "$basedir/node_modules/bobshell/bundle/bob.js" $arg ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (YOLO mode is en...cally approved.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Failed to setup git notes configuration: Error: ENOTDIR: not a directory, mkdir 
+'C:\Users\tribe\bob-foreman\worktrees\v3-build-stage\.git'
+    at async Module.mkdir (node:internal/fs/promises:859:10)
+    at async pqs (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:1825:106)
+    at async Promise.all (index 0)
+    at async T9n (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:1843:1043)
+    at async dnt.setup (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2150:2481)
+    at async R9n (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2169:446)
+    at async file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2169:1965
+    at async LZt (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2169:1523)
+    at async j3.refreshAuth (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:3480:27997)
+    at async uBi (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:4636:1081) {
+  errno: -4052,
+  code: 'ENOTDIR',
+  syscall: 'mkdir',
+  path: 'C:\\Users\\tribe\\bob-foreman\\worktrees\\v3-build-stage\\.git'
+}
+---output---
+ÔÿÉ Read foreman-review.ps1 contract from V3-PLAN.md (already done)
+ÔÿÉ Add reviewer stage to foreman-build.ps1 with BEGIN/END markers
+ÔÿÉ Test script parses without errors
+ÔÿÉ Test with no prerequisites (skip message)
+ÔÿÉ Create stub files for prerequisites
+ÔÿÉ Test with prerequisites present (invokes script)
+ÔÿÉ Verify build never fails regardless of reviewer outcome
+ÔÿÉ Verify diff is additive only
+ÔÿÉ Commit to worker/v3-build-stage branch
+---output---
+---output---
+Index: foreman-build.ps1
+===================================================================
+--- foreman-build.ps1	Current
++++ foreman-build.ps1	Proposed
+@@ -90,3 +90,44 @@
+ $jobs | Receive-Job
+ Write-Host ''
+ Write-Host 'Dashboard: http://192.168.178.86:8765/dashboard.html'
++
++# === v3-build-stage: BEGIN reviewer integration ===
++$reviewerPrompt = "$root\.foreman-prompts\reviewer.txt"
++$reviewerScript = "$PSScriptRoot\foreman-review.ps1"
++
++if (-not (Test-Path $reviewerPrompt) -or -not (Test-Path $reviewerScript)) {
++    Write-Host '[foreman] Reviewer stage skipped ÔÇö prerequisites not present (this is expected on v2 builds).' -ForegroundColor Yellow
++} else {
++    Write-Host '[foreman] Build complete. Starting reviewer pass...' -ForegroundColor Cyan
++    
++    $workerCount = $TaskIds.Count
++    if ($workerCount -eq 0) { $workerCount = 6 }
++    $targetRange = "master~$workerCount..HEAD"
++    
++    $reviewerExitCode = 0
++    try {
++        & $reviewerScript -Target $targetRange
++        $reviewerExitCode = $LASTEXITCODE
++    } catch {
++        $reviewerExitCode = 1
++        Write-Host "    [foreman] Reviewer invocation error: $_" -ForegroundColor Red
++    }
++    
++    if ($reviewerExitCode -eq 0) {
++        $reviewerJson = "$root\.foreman\tasks\reviewer.json"
++        if (Test-Path $reviewerJson) {
++            try {
++                $reviewData = Get-Content $reviewerJson -Raw | ConvertFrom-Json
++                $found = $reviewData.summary.issues_found
++                $fixed = $reviewData.summary.auto_fixed
++                $skipped = $reviewData.summary.skipped
++                Write-Host "[foreman] Reviewer: $found found, $fixed fixed, $skipped skipped" -ForegroundColor Green
++            } catch {
++                Write-Host '    [foreman] Could not parse reviewer.json' -ForegroundColor Yellow
++            }
++        }
++    } else {
++        Write-Host '[foreman] Reviewer stage failed ÔÇö see warning above. Build is still considered successful.' -ForegroundColor Yellow
++    }
++}
++# === v3-build-stage: END reviewer integration ===
+
+---output---
+---output---
+PARSE_OK
+---output---
+---output---
+Ô£à  Read foreman-review.ps1 contract from V3-PLAN.md (already done)
+Ô£à  Add reviewer stage to foreman-build.ps1 with BEGIN/END markers
+Ô£à  Test script parses without errors
+ÔÿÉ Test with no prerequisites (skip message)
+ÔÿÉ Create stub files for prerequisites
+ÔÿÉ Test with prerequisites present (invokes script)
+ÔÿÉ Verify build never fails regardless of reviewer outcome
+ÔÿÉ Verify diff is additive only
+ÔÿÉ Commit to worker/v3-build-stage branch
+---output---
+---output---
+Command exited with code: 1
+---output---
+---output---
+PREREQ_EXISTS
+---output---

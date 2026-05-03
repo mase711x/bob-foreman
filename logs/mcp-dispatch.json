@@ -1,0 +1,245 @@
+﻿node.exe : YOLO mode is enabled. All tool calls will be automatically approved.
+In C:\Users\tribe\AppData\Roaming\npm\bob.ps1:24 Zeichen:5
++     & "node$exe"  "$basedir/node_modules/bobshell/bundle/bob.js" $arg ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (YOLO mode is en...cally approved.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Failed to setup git notes configuration: Error: ENOTDIR: not a directory, mkdir 'C:\Users\tribe\bob-foreman\worktrees\mcp-dispatch\.git'
+    at async Module.mkdir (node:internal/fs/promises:859:10)
+    at async pqs (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:1825:106)
+    at async Promise.all (index 0)
+    at async T9n (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:1843:1043)
+    at async dnt.setup (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2150:2481)
+    at async R9n (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2169:446)
+    at async file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2169:1965
+    at async LZt (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2169:1523)
+    at async j3.refreshAuth (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:3480:27997)
+    at async uBi (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:4636:1081) {
+  errno: -4052,
+  code: 'ENOTDIR',
+  syscall: 'mkdir',
+  path: 'C:\\Users\\tribe\\bob-foreman\\worktrees\\mcp-dispatch\\.git'
+}
+---output---
+Index: dispatch.js
+===================================================================
+--- dispatch.js	Original
++++ dispatch.js	Written
+@@ -0,0 +1,91 @@
++import { existsSync } from 'fs';
++import { join } from 'path';
++import { runForemanBuild, getRepoRoot } from '../lib/runner.js';
++
++export const tool = {
++  name: 'foreman.dispatch',
++  description: 'Spawn N parallel Bob workers in isolated git worktrees to build features. Each worker is briefed via .foreman-prompts/<task_id>.txt. Returns immediately with a job_id and dashboard URL ÔÇô does NOT wait for workers to finish. Use foreman.status to poll progress.',
++  inputSchema: {
++    type: 'object',
++    required: ['project_description', 'task_ids'],
++    properties: {
++      project_description: {
++        type: 'string',
++        description: 'Short summary of what the workers will build (used by Bob plan-mode to estimate sequential time)'
++      },
++      task_ids: {
++        type: 'array',
++        items: { type: 'string' },
++        minItems: 1,
++        description: 'Worker task IDs. Each MUST have a corresponding .foreman-prompts/<id>.txt brief file already on disk.'
++      },
++      max_coins_per_worker: {
++        type: 'number',
++        default: 3,
++        minimum: 1,
++        maximum: 10,
++        description: 'Max Bobcoins each worker may spend (hard cap). Default 3 ÔÇô keeps a 4-worker dispatch under ~12 coins.'
++      },
++      skip_estimate: {
++        type: 'boolean',
++        default: false,
++        description: 'If true, skip the Bob plan-mode estimate call (saves ~0.3 coins, useful for quick re-runs).'
++      }
++    }
++  },
++  handler: async (args) => {
++    try {
++      const repoRoot = getRepoRoot();
++      const missingPrompts = [];
++
++      // Validate prompt files exist
++      for (const taskId of args.task_ids) {
++        const promptPath = join(repoRoot, '.foreman-prompts', `${taskId}.txt`);
++        if (!existsSync(promptPath)) {
++          missingPrompts.push(taskId);
++        }
++      }
++
++      if (missingPrompts.length > 0) {
++        return {
++          content: [{
++            type: 'text',
++            text: `Error: Missing prompt files for task IDs: ${missingPrompts.join(', ')}\nEach task must have a .foreman-prompts/<id>.txt file.`
++          }],
++          isError: true
++        };
++      }
++
++      // Dispatch the build
++      const result = runForemanBuild({
++        projectDescription: args.project_description,
++        taskIds: args.task_ids,
++        maxCoinsPerWorker: args.max_coins_per_worker || 3,
++        skipEstimate: args.skip_estimate || false
++      });
++
++      const workerCount = args.task_ids.length;
++      const maxCoins = args.max_coins_per_worker || 3;
++      const totalMaxCoins = workerCount * maxCoins;
++
++      return {
++        content: [{
++          type: 'text',
++          text: `Foreman dispatched ${workerCount} worker(s).
++Tasks: ${args.task_ids.join(', ')}
++Job ID: ${result.job_id}
++Dashboard: ${result.dashboard_url}
++Started: ${result.started_at}
++Coin cap: ${maxCoins}/worker (max total: ${totalMaxCoins})
++
++Workers are now running in parallel git worktrees. Use foreman.status to poll progress.`
++        }]
++      };
++    } catch (error) {
++      return {
++        content: [{ type: 'text', text: `Error: ${error.message}` }],
++        isError: true
++      };
++    }
++  }
++};
+
+---output---
+Error executing tool execute_command: Command rejected because it could not be parsed safely
+---output---
+fatal: a branch named 'worker/mcp-dispatch' already exists
+---output---
+---output---
+M       .bob/notes/pending-notes.txt                                            
+Already on 'worker/mcp-dispatch'
+---output---
+---output---
+warning: in the working copy of 'foreman-mcp/tools/dispatch.js', LF will be repl
+aced by CRLF the next time Git touches it
+---output---
+---output---
+[worker/mcp-dispatch f6363b5] feat: foreman.dispatch MCP tool                   
+ 1 file changed, 91 insertions(+)                                               
+ create mode 100644 foreman-mcp/tools/dispatch.js
+---output---
+---output---
+
+Created foreman.dispatch MCP tool at foreman-mcp/tools/dispatch.js
+
+Ô£ô Syntax validated (node -c passed)
+Ô£ô Exports `tool` object matching contract
+Ô£ô Validates .foreman-prompts/<id>.txt files exist
+Ô£ô Returns isError for missing prompts
+Ô£ô Calls runForemanBuild with all parameters
+Ô£ô Returns formatted job details (job_id, dashboard_url, started_at, coin caps)
+Ô£ô Committed to worker/mcp-dispatch branch
+
+Tool ready for Wave 2 integration.
+
+---output---
+{
+  "response": "",
+  "stats": {
+    "models": {
+      "premium": {
+        "api": {
+          "totalRequests": 10,
+          "totalErrors": 0,
+          "totalLatencyMs": 51843
+        },
+        "tokens": {
+          "prompt": 131074,
+          "candidates": 2719,
+          "total": 133222,
+          "cached": 121113,
+          "thoughts": 0,
+          "tool": 0
+        }
+      }
+    },
+    "tools": {
+      "totalCalls": 10,
+      "totalSuccess": 9,
+      "totalFail": 1,
+      "totalDurationMs": 9236,
+      "totalDecisions": {
+        "accept": 0,
+        "reject": 0,
+        "modify": 0,
+        "auto_accept": 9
+      },
+      "byName": {
+        "read_file": {
+          "count": 2,
+          "success": 2,
+          "fail": 0,
+          "durationMs": 21,
+          "decisions": {
+            "accept": 0,
+            "reject": 0,
+            "modify": 0,
+            "auto_accept": 2
+          }
+        },
+        "write_to_file": {
+          "count": 1,
+          "success": 1,
+          "fail": 0,
+          "durationMs": 43,
+          "decisions": {
+            "accept": 0,
+            "reject": 0,
+            "modify": 0,
+            "auto_accept": 1
+          }
+        },
+        "execute_command": {
+          "count": 6,
+          "success": 5,
+          "fail": 1,
+          "durationMs": 9172,
+          "decisions": {
+            "accept": 0,
+            "reject": 0,
+            "modify": 0,
+            "auto_accept": 5
+          }
+        },
+        "attempt_completion": {
+          "count": 1,
+          "success": 1,
+          "fail": 0,
+          "durationMs": 0,
+          "decisions": {
+            "accept": 0,
+            "reject": 0,
+            "modify": 0,
+            "auto_accept": 1
+          }
+        }
+      }
+    },
+    "files": {
+      "totalLinesAdded": 91,
+      "totalLinesRemoved": 0
+    },
+    "budgetSpend": 9.76,
+    "maxBudget": 40,
+    "sessionCost": 0.331625
+  }
+}

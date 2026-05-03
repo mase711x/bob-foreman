@@ -1,0 +1,89 @@
+Mission: Create the foreman.status MCP tool. This is one of three Wave 2 tools that consume the foundation built by Wave 1 (mcp-foundation, already merged to master). Your tool reports the current state of the running (or last) Foreman session — worker progress, coins consumed, elapsed time.
+
+Your scope (you may ONLY create this file, no others):
+  - foreman-mcp/tools/status.js
+
+Files you must NOT touch:
+  - foreman-mcp/server.js (Wave 1's, frozen)
+  - foreman-mcp/lib/* (Wave 1's, frozen — read but never modify)
+  - foreman-mcp/package.json (Wave 1's, frozen)
+  - foreman-mcp/tools/dispatch.js (parallel sibling — another worker owns it)
+  - foreman-mcp/tools/bauleiter.js (parallel sibling — another worker owns it)
+  - Anything outside foreman-mcp/
+  - You may NOT modify status-server.cjs — you read .foreman/ filesystem state directly, NOT the HTTP endpoint
+
+Files you must read first:
+  - foreman-mcp/lib/contract.md (the API spec — your tool MUST conform)
+  - foreman-mcp/lib/runner.js (you import getRepoRoot from here)
+  - status-server.cjs lines 130-225 (to understand the .foreman/ file shapes — this is reference only, do NOT copy implementation)
+
+Tool specification:
+
+Name: foreman.status
+Description (shown in Bob IDE): "Report the current state of all Foreman workers including per-worker status, coins consumed, elapsed time, and ETA. Reads .foreman/ filesystem directly — no HTTP, no dependency on the status server."
+
+inputSchema (JSON Schema):
+  type: object
+  properties: {}
+  required: []
+  (No arguments — status is global to the repo)
+
+handler implementation:
+  - Import getRepoRoot from "../lib/runner.js"
+  - Use fs.readFileSync, fs.readdirSync, fs.existsSync, path.join from Node built-ins
+  - Compute paths from getRepoRoot():
+    - tasksDir = <repo>/.foreman/tasks/
+    - startTimeFile = <repo>/.foreman/start_time.txt
+    - endTimeFile = <repo>/.foreman/end_time.txt
+    - estimateFile = <repo>/.foreman/estimate.json
+  - If tasksDir does not exist: return content text "No active Foreman session. Run foreman.dispatch to start workers."
+  - For each .json file in tasksDir:
+    - Parse it; collect { id (filename without .json), status, coins }
+    - status default "unknown" if missing
+    - coins default 0 if missing
+  - Read start_time.txt and end_time.txt — IMPORTANT: strip literal `\n` (backslash + n at end) before trim, like status-server.cjs does. Use: content.replace(/\\n$/g, '').replace(/\\r\\n$/g, '').trim()
+  - Read estimate.json if present, parse total_seconds
+  - Compute elapsed_seconds = floor((endTime || now - startTime) / 1000) when startTime present
+  - Compute is_active = !endTime && workers.length > 0
+  - Compute is_done = !!endTime || (workers.length > 0 && workers.every(w => w.status === 'done'))
+
+Return: content with a single text block — JSON.stringify(summary, null, 2) where summary is:
+  {
+    is_active: boolean,
+    is_done: boolean,
+    worker_count: number,
+    done_count: number,
+    running_count: number,
+    queued_count: number,
+    error_count: number,
+    total_coins: number (sum, rounded to 4 decimals),
+    elapsed_seconds: number | null,
+    estimate_seconds: number | null,
+    saved_seconds: number | null,   // estimate - elapsed when done, else null
+    start_time: string | null,
+    end_time: string | null,
+    dashboard_url: "http://192.168.178.86:8765/dashboard.html",
+    workers: [{ id, status, coins }, ...]    // sorted by id
+  }
+
+Constraints:
+  - Use ESM (import/export)
+  - No new dependencies — only Node built-ins plus runner.js
+  - Wrap each file read in try/catch — corrupt JSON or missing files must NOT crash the tool, just degrade gracefully
+  - Do NOT make HTTP calls — read filesystem only
+  - Total file length under 100 lines
+  - The literal-`\n` strip is mandatory: the data on disk may have buggy newlines (this was the v0.2.3-defense fix in status-server.cjs — same bug class)
+
+Verification before claiming done:
+  - foreman-mcp/tools/status.js exists
+  - `node -c foreman-mcp/tools/status.js` exits 0
+  - Exports `tool` as a named export
+  - Handles missing tasksDir gracefully
+  - Includes the literal-`\n` strip on time files
+
+Commit:
+  - Branch: worker/mcp-status
+  - Message: feat: foreman.status MCP tool
+  - One commit.
+
+Done = file exists, syntax check passes, exports `tool`, gracefully handles all missing-file edge cases.

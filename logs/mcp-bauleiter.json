@@ -1,0 +1,264 @@
+﻿node.exe : YOLO mode is enabled. All tool calls will be automatically approved.
+In C:\Users\tribe\AppData\Roaming\npm\bob.ps1:24 Zeichen:5
++     & "node$exe"  "$basedir/node_modules/bobshell/bundle/bob.js" $arg ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (YOLO mode is en...cally approved.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Failed to setup git notes configuration: Error: ENOTDIR: not a directory, mkdir 'C:\Users\tribe\bob-foreman\worktrees\mcp-bauleiter\.git'
+    at async Module.mkdir (node:internal/fs/promises:859:10)
+    at async pqs (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:1825:106)
+    at async Promise.all (index 0)
+    at async T9n (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:1843:1043)
+    at async dnt.setup (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2150:2481)
+    at async R9n (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2169:446)
+    at async file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2169:1965
+    at async LZt (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2169:1523)
+    at async j3.refreshAuth (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:3480:27997)
+    at async uBi (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:4636:1081) {
+  errno: -4052,
+  code: 'ENOTDIR',
+  syscall: 'mkdir',
+  path: 'C:\\Users\\tribe\\bob-foreman\\worktrees\\mcp-bauleiter\\.git'
+}
+---output---
+Index: bauleiter.js
+===================================================================
+--- bauleiter.js	Original
++++ bauleiter.js	Written
+@@ -0,0 +1,100 @@
++import { runForemanBuild } from '../lib/runner.js';
++
++const TRACK_TEMPLATES = {
++  fullstack: ['backend-api', 'frontend-ui', 'tests', 'docs'],
++  api_only: ['api-endpoints', 'api-tests', 'api-docs'],
++  frontend_only: ['ui-components', 'ui-pages', 'ui-tests']
++};
++
++export const tool = {
++  name: 'bauleiter.plan',
++  description: 'Manager-of-Foremans: decompose a large epic into multiple parallel Foreman tracks using a track template. Returns a plan; if auto_dispatch is true, also dispatches all tracks via foreman.dispatch immediately.',
++  inputSchema: {
++    type: 'object',
++    required: ['epic_description'],
++    properties: {
++      epic_description: {
++        type: 'string',
++        description: 'High-level project goal (e.g. \'Build a URL shortener with analytics dashboard\')'
++      },
++      template: {
++        type: 'string',
++        enum: ['fullstack', 'api_only', 'frontend_only'],
++        default: 'fullstack',
++        description: 'Track template determining how the epic is decomposed'
++      },
++      max_coins_per_worker: {
++        type: 'number',
++        default: 3,
++        minimum: 1,
++        maximum: 10
++      },
++      auto_dispatch: {
++        type: 'boolean',
++        default: false,
++        description: 'If true, immediately dispatch all tracks via Foreman after planning. If false, only return the plan for review.'
++      }
++    }
++  },
++  handler: async (args) => {
++    try {
++      const template = args.template || 'fullstack';
++      
++      // Validate template
++      if (!TRACK_TEMPLATES[template]) {
++        return {
++          content: [{
++            type: 'text',
++            text: `Error: Invalid template '${template}'. Valid templates: ${Object.keys(TRACK_TEMPLATES).join(', ')}`
++          }],
++          isError: true
++        };
++      }
++
++      const trackIds = TRACK_TEMPLATES[template];
++      const tracks = trackIds.map(id => ({
++        id,
++        role: id.replace(/-/g, ' ')
++      }));
++
++      const plan = {
++        epic: args.epic_description,
++        template,
++        tracks,
++        total_workers: tracks.length,
++        estimated_max_coins: tracks.length * (args.max_coins_per_worker || 3)
++      };
++
++      // Auto-dispatch path
++      if (args.auto_dispatch) {
++        const result = runForemanBuild({
++          projectDescription: args.epic_description,
++          taskIds: trackIds,
++          maxCoinsPerWorker: args.max_coins_per_worker || 3
++        });
++
++        const trackList = trackIds.map(id => `- ${id}`).join('\n');
++        
++        return {
++          content: [{
++            type: 'text',
++            text: `Bauleiter dispatched ${tracks.length} parallel tracks for: ${args.epic_description}\n\nTracks:\n${trackList}\n\nJob ID: ${result.job_id}\nDashboard: ${result.dashboard_url}\nStarted: ${result.started_at}\n\nUse foreman.status to poll progress.`
++          }]
++        };
++      }
++
++      // Plan-only path
++      return {
++        content: [{
++          type: 'text',
++          text: `Bauleiter plan ready (NOT yet dispatched):\n\n${JSON.stringify(plan, null, 2)}\n\nIMPORTANT: Each track in tracks[] requires a corresponding .foreman-prompts/<track_id>.txt brief file before dispatch will succeed. To execute: call bauleiter.plan again with auto_dispatch=true OR call foreman.dispatch with the listed task_ids.`
++        }]
++      };
++    } catch (error) {
++      return {
++        content: [{ type: 'text', text: `Error: ${error.message}` }],
++        isError: true
++      };
++    }
++  }
++};
+
+---output---
+---output---
+git : fatal: a branch named 'worker/mcp-bauleiter' already exists               
+In Zeile:1 Zeichen:1                                                            
++ git checkout -b worker/mcp-bauleiter 2>&1; git add foreman-mcp/tools/ ...     
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                                     
+    + CategoryInfo          : NotSpecified: (fatal: a branch... already exists  
+   :String) [], RemoteException                                                 
+    + FullyQualifiedErrorId : NativeCommandError                                
+                                                                                
+git : warning: in the working copy of 'foreman-mcp/tools/bauleiter.js', LF      
+will be replaced by CRLF the next time Git touches it                           
+In Zeile:1 Zeichen:44                                                           
++ ... p-bauleiter 2>&1; git add foreman-mcp/tools/bauleiter.js 2>&1; git co ... 
++                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~             
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it  
+   :String) [], RemoteException                                                 
+    + FullyQualifiedErrorId : NativeCommandError                                
+                                                                                
+[worker/mcp-bauleiter 6edc462] feat: bauleiter.plan MCP tool (Manager-of-Foreman
+s)                                                                              
+ 1 file changed, 100 insertions(+)                                              
+ create mode 100644 foreman-mcp/tools/bauleiter.js
+---output---
+---output---
+
+bauleiter.plan MCP tool created successfully.
+
+File: foreman-mcp/tools/bauleiter.js (100 lines)
+Branch: worker/mcp-bauleiter
+Commit: 6edc462 "feat: bauleiter.plan MCP tool (Manager-of-Foremans)"
+
+Features implemented:
+- Static track templates (fullstack, api_only, frontend_only)
+- Template validation with error handling
+- Plan-only mode (auto_dispatch=false) returns JSON plan
+- Auto-dispatch mode (auto_dispatch=true) calls runForemanBuild
+- Exports `tool` conforming to contract.md spec
+- Syntax validated (node -c passes)
+
+Ready for merge.
+
+---output---
+{
+  "response": "",
+  "stats": {
+    "models": {
+      "premium": {
+        "api": {
+          "totalRequests": 6,
+          "totalErrors": 0,
+          "totalLatencyMs": 42277
+        },
+        "tokens": {
+          "prompt": 71592,
+          "candidates": 2612,
+          "total": 73633,
+          "cached": 63845,
+          "thoughts": 0,
+          "tool": 0
+        }
+      }
+    },
+    "tools": {
+      "totalCalls": 6,
+      "totalSuccess": 6,
+      "totalFail": 0,
+      "totalDurationMs": 4227,
+      "totalDecisions": {
+        "accept": 0,
+        "reject": 0,
+        "modify": 0,
+        "auto_accept": 6
+      },
+      "byName": {
+        "read_file": {
+          "count": 2,
+          "success": 2,
+          "fail": 0,
+          "durationMs": 5,
+          "decisions": {
+            "accept": 0,
+            "reject": 0,
+            "modify": 0,
+            "auto_accept": 2
+          }
+        },
+        "write_to_file": {
+          "count": 1,
+          "success": 1,
+          "fail": 0,
+          "durationMs": 44,
+          "decisions": {
+            "accept": 0,
+            "reject": 0,
+            "modify": 0,
+            "auto_accept": 1
+          }
+        },
+        "execute_command": {
+          "count": 2,
+          "success": 2,
+          "fail": 0,
+          "durationMs": 4178,
+          "decisions": {
+            "accept": 0,
+            "reject": 0,
+            "modify": 0,
+            "auto_accept": 2
+          }
+        },
+        "attempt_completion": {
+          "count": 1,
+          "success": 1,
+          "fail": 0,
+          "durationMs": 0,
+          "decisions": {
+            "accept": 0,
+            "reject": 0,
+            "modify": 0,
+            "auto_accept": 1
+          }
+        }
+      }
+    },
+    "files": {
+      "totalLinesAdded": 100,
+      "totalLinesRemoved": 0
+    },
+    "budgetSpend": 9.61,
+    "maxBudget": 40,
+    "sessionCost": 0.18265399999999998
+  }
+}

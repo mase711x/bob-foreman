@@ -1,15 +1,22 @@
+# Foreman runtime state (regenerated each run)
+.foreman/
 worktrees/
-logs/
-.foreman/start_time.txt
-.foreman/end_time.txt
-.foreman/tasks/
-server.log
-status-server.log
-extracted-log.json
-mock-workers.ps1
-patch-server.ps1
+
+# npm
 node_modules/
-urls.db
+
+# Logs and test output
 *.log
-*.bundle
-foreman-bundle.ps1
+server-out.txt
+server-err.txt
+status-after.json
+dump.txt
+
+# Debug scripts (local-only)
+apply-v0*.py
+patch*.py
+
+# OS
+.DS_Store
+Thumbs.db
+CLAUDE.md  

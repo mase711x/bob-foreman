@@ -1,0 +1,172 @@
+﻿node.exe : YOLO mode is enabled. All tool calls will be automatically approved.
+In C:\Users\tribe\AppData\Roaming\npm\bob.ps1:24 Zeichen:5
++     & "node$exe"  "$basedir/node_modules/bobshell/bundle/bob.js" $arg ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (YOLO mode is en...cally approved.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Failed to setup git notes configuration: Error: ENOTDIR: not a directory, mkdir 
+'C:\Users\tribe\bob-foreman\worktrees\video-script\.git'
+    at async Module.mkdir (node:internal/fs/promises:859:10)
+    at async mqs (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:1877:223)
+    at async Promise.all (index 1)
+    at async T9n (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:1843:1043)
+    at async dnt.setup (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2150:2481)
+    at async R9n (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2169:446)
+    at async file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2169:1965
+    at async LZt (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2169:1523)
+    at async j3.refreshAuth (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:3480:27997)
+    at async uBi (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:4636:1081) {
+  errno: -4052,
+  code: 'ENOTDIR',
+  syscall: 'mkdir',
+  path: 'C:\\Users\\tribe\\bob-foreman\\worktrees\\video-script\\.git'
+}
+---output---
+Index: VIDEO_SCRIPT.md
+===================================================================
+--- VIDEO_SCRIPT.md	Original
++++ VIDEO_SCRIPT.md	Written
+@@ -0,0 +1,59 @@
++# Bob Foreman - Demo Video Script (2:30 Min)
++
++**Projekt:** Bob Foreman - Parallel Bob CLI Orchestrator  
++**Challenge:** IBM Bob Coding Challenge 2026  
++**Flagship Demo:** URL Shortener in 45min statt 9h  
++
++---
++
++## Szenen-├£bersicht
++
++| Time | Visual | DE Voiceover | EN Voiceover |
++|------|--------|--------------|--------------|
++| **0:00-0:08** | Schwarzer Screen. Text-Animation: "9 Stunden ÔåÆ 45 Minuten. Wie?" | Neun Stunden Entwicklungszeit. Auf f├╝nfundvierzig Minuten reduziert. Wie geht das? | Nine hours of development time. Reduced to forty-five minutes. How? |
++| **0:08-0:20** | Single Bob CLI Terminal. Sequentielle Tasks laufen. Uhr tickt sichtbar im Corner. Fortschrittsbalken crawlt langsam. | Bob CLI ist m├ñchtig. Aber sequentiell. Eine Task nach der anderen. Zeit vergeht. Entwickler warten. | Bob CLI is powerful. But sequential. One task after another. Time passes. Developers wait. |
++| **0:20-0:35** | Logo Reveal: "Bob Foreman". Architektur-Diagramm zoomt ein: Main Process ÔåÆ 4 Worker Nodes ÔåÆ Shared Database. | Bob Foreman. Der Orchestrator. Verteilt Tasks auf parallele Bob-Instanzen. Vier Worker. Ein Ziel. Schneller fertig. | Bob Foreman. The orchestrator. Distributes tasks across parallel Bob instances. Four workers. One goal. Done faster. |
++| **0:35-0:50** | Terminal Fullscreen. Command: `foreman-build "URL Shortener"` + Enter. Estimate erscheint: "Estimated: 9h ÔåÆ 45min (88% faster)". Cursor blinkt. | Foreman Build. URL Shortener. Estimate: neun Stunden werden zu f├╝nfundvierzig Minuten. Achtundachtzig Prozent schneller. Los geht's. | Foreman build. URL shortener. Estimate: nine hours becomes forty-five minutes. Eighty-eight percent faster. Let's go. |
++| **0:50-1:30** | **HAUPTSZENE:** Split-Screen. Links: Dashboard mit 4 Worker-Panels (Status, Progress, Current Task). Rechts: Handy mit Telegram-Updates scrollt live. Counter oben: Estimated/Elapsed/Saved ticken. Worker-Status wechselt: Planning ÔåÆ Coding ÔåÆ Testing ÔåÆ Done. | Das Dashboard. Live. Vier Worker parallel. Coder schreibt Code. Tester validiert. Reviewer pr├╝ft. Docs dokumentiert. Telegram Updates in Echtzeit. Elapsed Counter l├ñuft. Saved Counter steigt. Jeder Worker unabh├ñngig. Kein Warten. Pure Effizienz. | The dashboard. Live. Four workers in parallel. Coder writes code. Tester validates. Reviewer checks. Docs documents. Telegram updates in real time. Elapsed counter runs. Saved counter rises. Each worker independent. No waiting. Pure efficiency. |
++| **1:30-1:50** | Browser Demo. URL Shortener App l├ñuft. User gibt lange URL ein. Klick. Kurz-URL erscheint. Copy. Neuer Tab. Paste. Redirect funktioniert. Stats-Page zeigt Click-Count. | Der Beweis. URL Shortener funktioniert. Link k├╝rzen. Redirect. Stats tracken. Gebaut in f├╝nfundvierzig Minuten. Produktionsreif. | The proof. URL shortener works. Shorten link. Redirect. Track stats. Built in forty-five minutes. Production ready. |
++| **1:50-2:05** | Dashboard Done-State. Alle Worker gr├╝n. SAVED Counter golden highlighted: "7h 15min saved". Percentage: "88% faster". Confetti-Animation subtil. | Fertig. Alle Worker done. Sieben Stunden f├╝nfzehn Minuten gespart. Achtundachtzig Prozent schneller. Das ist Bob Foreman. | Done. All workers complete. Seven hours fifteen minutes saved. Eighty-eight percent faster. That's Bob Foreman. |
++| **2:05-2:20** | Code-Editor Split. Links: Foreman v1 Code. Rechts: Foreman v2 Code (status-server, dashboard). Animation: v1 ÔåÆ spawnt Workers ÔåÆ baut v2. Recursion-Symbol. | Meta-Twist. Foreman Version zwei. Gebaut von Foreman Version eins. Der Orchestrator orchestriert sich selbst. Recursion in Aktion. | Meta twist. Foreman version two. Built by Foreman version one. The orchestrator orchestrates itself. Recursion in action. |
++| **2:20-2:30** | Outro Screen. GitHub Repo-Link gro├ƒ. Text: "IBM Bob Coding Challenge 2026". Untertitel: "github.com/your-repo/bob-foreman". Fade to black. | Bob Foreman. Open Source. GitHub. IBM Bob Challenge zweitausendsechsundzwanzig. Link in der Beschreibung. | Bob Foreman. Open source. GitHub. IBM Bob Challenge twenty twenty-six. Link in description. |
++
++---
++
++## Recording-Tipps
++
++### Empfohlene Tools
++- **Voice Recording:** ElevenLabs (AI Voice) oder Audacity (eigene Stimme)
++- **Screen Capture:** OBS Studio (kostenlos, professionell)
++- **Video Editing:** DaVinci Resolve (kostenlos) oder Adobe Premiere
++
++### Recording-Checkliste
++1. **Pre-Production:**
++   - Dashboard + Terminal vorbereiten (Mock-Daten f├╝r reproduzierbare Aufnahmen)
++   - Browser-Demo URL Shortener lokal laufen lassen
++   - Telegram-Updates als Screenshots/Screen-Recording vorbereiten
++
++2. **Recording:**
++   - Jede Szene einzeln aufnehmen (einfacher zu editieren)
++   - Voiceover separat aufnehmen (bessere Audio-Qualit├ñt)
++   - B-Roll Material: Code-Snippets, Architektur-Diagramme, Terminal-Sessions
++
++3. **Post-Production:**
++   - Timings exakt auf Skript abstimmen (┬▒0.5 Sek Toleranz)
++   - Transitions zwischen Szenen: schnelle Cuts (kein Fade, zu langsam)
++   - Background Music: subtil, nicht ablenkend (z.B. Tech/Corporate Ambient)
++   - Text-Overlays f├╝r Key-Metrics (88% faster, 7h 15min saved)
++
++### Voiceover-Aufnahme Tipps
++- **Pausen:** 0.5-1 Sek zwischen S├ñtzen einplanen
++- **Betonung:** Zahlen und Metriken betonen (z.B. "ACHTUNDACHTZIG Prozent")
++- **Tempo:** Moderate Geschwindigkeit (nicht zu schnell, Demo muss folgen k├Ânnen)
++- **Ton:** Confident, nicht verkaufsf├Ârdernd. Dev-to-Dev Pitch.
++
++---
++
++**Total Duration:** 2:30 Min (150 Sekunden)  
++**Target Audience:** Developers, Hackathon Judges, Tech Community  
++**Goal:** Demonstrate Bob Foreman's parallel orchestration power through concrete URL Shortener example + meta-recursion story.
+
+---output---
+---output---
+
+VIDEO_SCRIPT.md erstellt im aktuellen Verzeichnis.
+
+Skript enth├ñlt:
+- 10 Szenen ├╝ber 2:30 Min (0:00-2:30)
+- Markdown-Tabelle mit Time/Visual/DE Voiceover/EN Voiceover Spalten
+- Cold Open ÔåÆ Problem ÔåÆ L├Âsung ÔåÆ Live Demo ÔåÆ Meta-Reveal ÔåÆ Outro
+- Voiceover: knapp, druckvoll, Dev-to-Dev Pitch-Stil
+- Recording-Tipps Block: Tools (ElevenLabs, OBS, DaVinci) + 3-Punkt Checkliste
+
+Datei bereit f├╝r Video-Produktion.
+
+---output---
+{
+  "response": "",
+  "stats": {
+    "models": {
+      "premium": {
+        "api": {
+          "totalRequests": 2,
+          "totalErrors": 0,
+          "totalLatencyMs": 43252
+        },
+        "tokens": {
+          "prompt": 21406,
+          "candidates": 2498,
+          "total": 23904,
+          "cached": 9431,
+          "thoughts": 0,
+          "tool": 0
+        }
+      }
+    },
+    "tools": {
+      "totalCalls": 2,
+      "totalSuccess": 2,
+      "totalFail": 0,
+      "totalDurationMs": 46,
+      "totalDecisions": {
+        "accept": 0,
+        "reject": 0,
+        "modify": 0,
+        "auto_accept": 2
+      },
+      "byName": {
+        "write_to_file": {
+          "count": 1,
+          "success": 1,
+          "fail": 0,
+          "durationMs": 45,
+          "decisions": {
+            "accept": 0,
+            "reject": 0,
+            "modify": 0,
+            "auto_accept": 1
+          }
+        },
+        "attempt_completion": {
+          "count": 1,
+          "success": 1,
+          "fail": 0,
+          "durationMs": 1,
+          "decisions": {
+            "accept": 0,
+            "reject": 0,
+            "modify": 0,
+            "auto_accept": 1
+          }
+        }
+      }
+    },
+    "files": {
+      "totalLinesAdded": 59,
+      "totalLinesRemoved": 0
+    },
+    "budgetSpend": 3.16,
+    "maxBudget": 40,
+    "sessionCost": 0.059759
+  }
+}

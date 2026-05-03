@@ -1,0 +1,590 @@
+﻿node.exe : YOLO mode is enabled. All tool calls will be automatically approved.
+In C:\Users\tribe\AppData\Roaming\npm\bob.ps1:24 Zeichen:5
++     & "node$exe"  "$basedir/node_modules/bobshell/bundle/bob.js" $arg ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (YOLO mode is en...cally approved.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Failed to setup git notes configuration: Error: ENOTDIR: not a directory, mkdir 
+'C:\Users\tribe\bob-foreman\worktrees\architecture\.git'
+    at async Module.mkdir (node:internal/fs/promises:859:10)
+    at async pqs (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:1825:106)
+    at async Promise.all (index 0)
+    at async T9n (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:1843:1043)
+    at async dnt.setup (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2150:2481)
+    at async R9n (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2169:446)
+    at async file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2169:1965
+    at async LZt (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2169:1523)
+    at async j3.refreshAuth (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:3480:27997)
+    at async uBi (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:4636:1081) {
+  errno: -4052,
+  code: 'ENOTDIR',
+  syscall: 'mkdir',
+  path: 'C:\\Users\\tribe\\bob-foreman\\worktrees\\architecture\\.git'
+}
+---output---
+Index: ARCHITECTURE.md
+===================================================================
+--- ARCHITECTURE.md	Original
++++ ARCHITECTURE.md	Written
+@@ -0,0 +1,473 @@
++# Bob Foreman Architecture
++
++**IBM Bob Coding Challenge 2026**
++
++Bob Foreman orchestriert parallele Bob CLI Instanzen mit git worktree Isolation. Jeder Worker l├ñuft in eigenem worktree, isoliert von anderen Tasks.
++
++## System Overview
++
++```mermaid
++graph TB
++    User[User] -->|triggers| FB[foreman-build.ps1]
++    FB -->|1. estimate| BE[Bob CLI - Plan Mode]
++    FB -->|2. spawn N jobs| SW1[spawn-worker.ps1 #1]
++    FB -->|2. spawn N jobs| SW2[spawn-worker.ps1 #2]
++    FB -->|2. spawn N jobs| SWN[spawn-worker.ps1 #N]
++    
++    SW1 -->|creates| WT1[worktrees/1/]
++    SW2 -->|creates| WT2[worktrees/2/]
++    SWN -->|creates| WTN[worktrees/N/]
++    
++    WT1 -->|runs| BC1[Bob CLI]
++    WT2 -->|runs| BC2[Bob CLI]
++    WTN -->|runs| BCN[Bob CLI]
++    
++    BC1 -->|writes| L1[logs/1.json]
++    BC2 -->|writes| L2[logs/2.json]
++    BCN -->|writes| LN[logs/N.json]
++    
++    FB -->|writes| FS[.foreman/state]
++    SW1 -->|updates| FS
++    SW2 -->|updates| FS
++    SWN -->|updates| FS
++    
++    FS -->|reads| SS[status-server.cjs :3001]
++    SS -->|serves| API[/dashboard/status.json]
++    API -->|polls| DH[dashboard/index.html]
++    DH -->|displays| Browser[User Browser]
++    
++    API -->|polls| TB[Telegram MCP Bot]
++    TB -->|posts| Phone[User Phone]
++    
++    style FB fill:#e1f5ff
++    style SS fill:#fff4e1
++    style DH fill:#e8f5e9
++    style TB fill:#f3e5f5
++```
++
++## Core Components
++
++### 1. foreman-build.ps1
++
++Top-level Orchestrator. Koordiniert gesamten Build-Prozess.
++
++**Ablauf:**
++1. Reset state (`.foreman/` cleanup)
++2. Bob estimate via plan-mode
++3. Mark `start_time.txt`
++4. Spawn N workers als PowerShell Background Jobs
++5. `Wait-Job` auf alle Workers
++6. Mark `end_time.txt`
++
++**State Files:**
++- `.foreman/estimate.json` - Bob's Sch├ñtzung (coins, time)
++- `.foreman/start_time.txt` - ISO timestamp
++- `.foreman/end_time.txt` - ISO timestamp
++
++**Code Pattern:**
++```powershell
++# Reset
++Remove-Item .foreman/tasks/*.json -Force
++
++# Estimate
++bob --mode plan @.foreman-prompts/task.txt | Out-File .foreman/estimate.json
++
++# Mark start
++Get-Date -Format o | Out-File .foreman/start_time.txt
++
++# Spawn workers
++$jobs = 1..4 | ForEach-Object {
++    Start-Job -FilePath .\scripts\spawn-worker.ps1 -ArgumentList $_
++}
++
++# Wait
++$jobs | Wait-Job
++
++# Mark end
++Get-Date -Format o | Out-File .foreman/end_time.txt
++```
++
++### 2. spawn-worker.ps1
++
++Worker Process. Einer pro Task, l├ñuft als Background Job.
++
++**Ablauf:**
++1. `git worktree add -B worker/<id> worktrees/<id> master` (race-safe)
++2. Write `.foreman/tasks/<id>.json` ÔåÆ `status: "queued"`
++3. Update status ÔåÆ `"running"`
++4. `Set-Location worktrees/<id>`
++5. Execute `bob @prompt.txt`
++6. Capture output ÔåÆ `logs/<id>.json`
++7. Commit changes in worktree
++8. Update status ÔåÆ `"done"`
++
++**State Tracking:**
++```json
++{
++  "id": 1,
++  "status": "running",
++  "prompt": "task-1.txt",
++  "started_at": "2026-05-02T10:30:00Z",
++  "completed_at": null
++}
++```
++
++**Race Safety:**
++Git worktree add mit `-B` flag ist atomic. Parallele Calls kollidieren nicht.
++
++**Code Pattern:**
++```powershell
++param($WorkerId)
++
++# Create worktree
++git worktree add -B "worker/$WorkerId" "worktrees/$WorkerId" master
++
++# Update status
++@{ id=$WorkerId; status="running" } | ConvertTo-Json | Out-File ".foreman/tasks/$WorkerId.json"
++
++# Run Bob
++Set-Location "worktrees/$WorkerId"
++bob @../.foreman-prompts/task-$WorkerId.txt | Tee-Object -FilePath "../../logs/$WorkerId.json"
++
++# Commit
++git add -A
++git commit -m "Worker $WorkerId completed"
++
++# Mark done
++@{ id=$WorkerId; status="done" } | ConvertTo-Json | Out-File "../../.foreman/tasks/$WorkerId.json"
++```
++
++### 3. status-server.cjs
++
++Express Server auf Port 3001. Aggregiert State f├╝r Dashboard.
++
++**Endpoint:**
++- `GET /dashboard/status.json`
++
++**Data Sources:**
++- `.foreman/tasks/*.json` - Worker status
++- `.foreman/start_time.txt` - Build start
++- `.foreman/end_time.txt` - Build end
++- `.foreman/estimate.json` - Bob's estimate
++- `logs/*.setup.log` - Worker discovery
++- `logs/<id>.json` - Coin counts
++
++**Response Schema:**
++```json
++{
++  "estimated": { "coins": 1500, "time_seconds": 120 },
++  "elapsed_seconds": 45,
++  "saved_seconds": 75,
++  "is_complete": false,
++  "workers": [
++    {
++      "id": 1,
++      "status": "done",
++      "coins": 350,
++      "started_at": "2026-05-02T10:30:00Z",
++      "completed_at": "2026-05-02T10:31:15Z"
++    }
++  ]
++}
++```
++
++**CORS:**
++Enabled f├╝r Browser-Zugriff.
++
++**Code Pattern:**
++```javascript
++app.get('/dashboard/status.json', (req, res) => {
++  const tasks = fs.readdirSync('.foreman/tasks')
++    .map(f => JSON.parse(fs.readFileSync(`.foreman/tasks/${f}`)));
++  
++  const estimate = JSON.parse(fs.readFileSync('.foreman/estimate.json'));
++  const startTime = new Date(fs.readFileSync('.foreman/start_time.txt', 'utf8'));
++  const elapsed = (Date.now() - startTime) / 1000;
++  
++  res.json({
++    estimated: estimate,
++    elapsed_seconds: elapsed,
++    saved_seconds: estimate.time_seconds - elapsed,
++    workers: tasks
++  });
++});
++```
++
++### 4. dashboard/index.html
++
++Vanilla HTML/JS Dashboard. Kein Framework.
++
++**Features:**
++- Polling `/dashboard/status.json` (1s interval)
++- 3 Metric Cards:
++  - **Estimated** - Bob's pre-flight Sch├ñtzung
++  - **Elapsed** - Live timer (100ms update)
++  - **Saved** - Estimated minus Elapsed (gr├╝n wenn positiv, golden wenn done)
++- Worker Cards:
++  - Color-coded borders (queued=gray, running=blue, done=green, error=red)
++  - Status badges
++  - Coin counter per worker
++
++**UI Logic:**
++```javascript
++setInterval(async () => {
++  const data = await fetch('http://localhost:3001/dashboard/status.json').then(r => r.json());
++  
++  // Update elapsed (live)
++  const elapsed = data.elapsed_seconds;
++  document.getElementById('elapsed').textContent = formatTime(elapsed);
++  
++  // Update saved (color logic)
++  const saved = data.saved_seconds;
++  const savedEl = document.getElementById('saved');
++  savedEl.textContent = formatTime(Math.abs(saved));
++  savedEl.className = saved > 0 ? 'positive' : 'negative';
++  if (data.is_complete && saved > 0) savedEl.className = 'golden';
++  
++  // Update workers
++  data.workers.forEach(w => {
++    const card = document.getElementById(`worker-${w.id}`);
++    card.className = `worker-card ${w.status}`;
++    card.querySelector('.coins').textContent = w.coins;
++  });
++}, 1000);
++```
++
++### 5. Telegram MCP Bot
++
++MCP Server postet Status alle 10 Minuten auf Handy.
++
++**Trigger:**
++Cron-like interval (10min).
++
++**Message Format:**
++```
++­ƒñû Bob Foreman Status
++ÔÅ▒´©Å Elapsed: 2m 15s
++­ƒÆ░ Saved: +45s
++Ô£à Workers: 3/4 done
++```
++
++**Integration:**
++Konsumiert `/dashboard/status.json` via HTTP.
++
++## Execution Flow
++
++```mermaid
++sequenceDiagram
++    participant User
++    participant FB as foreman-build.ps1
++    participant Bob as Bob CLI (Plan)
++    participant Job1 as Background Job 1
++    participant Job2 as Background Job 2
++    participant SW1 as spawn-worker.ps1 #1
++    participant SW2 as spawn-worker.ps1 #2
++    participant WT1 as worktrees/1/
++    participant WT2 as worktrees/2/
++    participant BC1 as Bob CLI #1
++    participant BC2 as Bob CLI #2
++    participant SS as status-server.cjs
++    participant DH as Dashboard
++    
++    User->>FB: Execute
++    FB->>FB: Reset .foreman/
++    FB->>Bob: Estimate tasks
++    Bob-->>FB: estimate.json
++    FB->>FB: Write start_time.txt
++    
++    par Spawn Workers
++        FB->>Job1: Start-Job spawn-worker.ps1 1
++        FB->>Job2: Start-Job spawn-worker.ps1 2
++    end
++    
++    Job1->>SW1: Execute
++    Job2->>SW2: Execute
++    
++    par Worker Execution
++        SW1->>WT1: git worktree add
++        SW1->>SW1: Write tasks/1.json (queued)
++        SW1->>SW1: Update status (running)
++        SW1->>BC1: bob @prompt-1.txt
++        BC1-->>SW1: Output
++        SW1->>SW1: Write logs/1.json
++        SW1->>WT1: git commit
++        SW1->>SW1: Update status (done)
++        
++        SW2->>WT2: git worktree add
++        SW2->>SW2: Write tasks/2.json (queued)
++        SW2->>SW2: Update status (running)
++        SW2->>BC2: bob @prompt-2.txt
++        BC2-->>SW2: Output
++        SW2->>SW2: Write logs/2.json
++        SW2->>WT2: git commit
++        SW2->>SW2: Update status (done)
++    end
++    
++    par Dashboard Polling
++        loop Every 1s
++            DH->>SS: GET /dashboard/status.json
++            SS->>SS: Read .foreman/tasks/*.json
++            SS->>SS: Read logs/*.json
++            SS-->>DH: Aggregated status
++            DH->>DH: Update UI
++        end
++    end
++    
++    FB->>FB: Wait-Job (all)
++    FB->>FB: Write end_time.txt
++    FB-->>User: Complete
++```
++
++## Worker State Machine
++
++```mermaid
++stateDiagram-v2
++    [*] --> queued: spawn-worker.ps1 starts
++    queued --> running: Bob CLI invoked
++    running --> done: Task completed successfully
++    running --> error: Bob CLI failed
++    done --> [*]
++    error --> [*]
++    
++    note right of queued
++        .foreman/tasks/<id>.json
++        status: "queued"
++    end note
++    
++    note right of running
++        Bob CLI executing
++        logs/<id>.json streaming
++    end note
++    
++    note right of done
++        Worktree committed
++        Coins counted
++    end note
++    
++    note right of error
++        Error logged
++        Worktree preserved for debug
++    end note
++```
++
++## File Structure
++
++```
++bob-foreman/
++Ôö£ÔöÇÔöÇ .foreman/
++Ôöé   Ôö£ÔöÇÔöÇ estimate.json          # Bob's pre-flight estimate
++Ôöé   Ôö£ÔöÇÔöÇ start_time.txt          # ISO timestamp
++Ôöé   Ôö£ÔöÇÔöÇ end_time.txt            # ISO timestamp
++Ôöé   ÔööÔöÇÔöÇ tasks/
++Ôöé       Ôö£ÔöÇÔöÇ 1.json              # Worker 1 status
++Ôöé       Ôö£ÔöÇÔöÇ 2.json              # Worker 2 status
++Ôöé       ÔööÔöÇÔöÇ N.json              # Worker N status
++Ôö£ÔöÇÔöÇ .foreman-prompts/
++Ôöé   Ôö£ÔöÇÔöÇ task-1.txt              # Prompt for worker 1
++Ôöé   Ôö£ÔöÇÔöÇ task-2.txt              # Prompt for worker 2
++Ôöé   ÔööÔöÇÔöÇ task-N.txt              # Prompt for worker N
++Ôö£ÔöÇÔöÇ worktrees/
++Ôöé   Ôö£ÔöÇÔöÇ 1/                      # Worker 1 isolated workspace
++Ôöé   Ôö£ÔöÇÔöÇ 2/                      # Worker 2 isolated workspace
++Ôöé   ÔööÔöÇÔöÇ N/                      # Worker N isolated workspace
++Ôö£ÔöÇÔöÇ logs/
++Ôöé   Ôö£ÔöÇÔöÇ 1.json                  # Worker 1 Bob output
++Ôöé   Ôö£ÔöÇÔöÇ 2.json                  # Worker 2 Bob output
++Ôöé   Ôö£ÔöÇÔöÇ 1.setup.log             # Worker 1 setup log
++Ôöé   ÔööÔöÇÔöÇ N.json                  # Worker N Bob output
++Ôö£ÔöÇÔöÇ scripts/
++Ôöé   Ôö£ÔöÇÔöÇ foreman-build.ps1       # Main orchestrator
++Ôöé   ÔööÔöÇÔöÇ spawn-worker.ps1        # Worker spawner
++Ôö£ÔöÇÔöÇ dashboard/
++Ôöé   ÔööÔöÇÔöÇ index.html              # Monitoring UI
++Ôö£ÔöÇÔöÇ status-server.cjs           # Express API server
++ÔööÔöÇÔöÇ src/
++    ÔööÔöÇÔöÇ mcp-server.js           # Telegram bot MCP
++```
++
++## Key Design Decisions
++
++### Git Worktree Isolation
++Jeder Worker l├ñuft in eigenem worktree. Verhindert file conflicts bei paralleler Ausf├╝hrung.
++
++**Vorteile:**
++- Zero file locking issues
++- Independent git history per task
++- Easy rollback per worker
++- Parallel commits m├Âglich
++
++### PowerShell Background Jobs
++Native Windows parallelization ohne externe Dependencies.
++
++**Vorteile:**
++- Built-in job management (`Start-Job`, `Wait-Job`)
++- Stdout/stderr capture
++- Exit code handling
++- No npm/node required f├╝r orchestration
++
++### Stateless Status Server
++Server liest nur Files, h├ñlt keinen State in Memory.
++
++**Vorteile:**
++- Restart-safe
++- No race conditions
++- Simple debugging (inspect files directly)
++- Multiple consumers m├Âglich (Dashboard + Telegram)
++
++### Vanilla JS Dashboard
++Kein Build-Step, kein Framework overhead.
++
++**Vorteile:**
++- Instant deployment (open HTML file)
++- Zero dependencies
++- Fast polling (1s interval)
++- Easy customization
++
++## Performance Characteristics
++
++**Parallelization:**
++- N workers = N CPU cores utilized
++- Linear speedup bis zu core count
++- Overhead: ~2s f├╝r worktree setup pro worker
++
++**Bottlenecks:**
++- Bob CLI execution time (dominant factor)
++- Git operations (worktree add, commit) - minimal
++- Status server polling - negligible
++
++**Typical Timeline:**
++```
++T+0s:    foreman-build starts
++T+2s:    Estimate complete
++T+3s:    All workers spawned
++T+3-60s: Workers executing (parallel)
++T+60s:   First worker done
++T+120s:  All workers done
++T+121s:  foreman-build complete
++```
++
++## Monitoring & Debugging
++
++**Live Monitoring:**
++- Dashboard: `http://localhost:3001/dashboard/`
++- Status API: `http://localhost:3001/dashboard/status.json`
++
++**Post-Mortem:**
++- Worker logs: `logs/<id>.json`
++- Task status: `.foreman/tasks/<id>.json`
++- Worktree state: `worktrees/<id>/` (preserved on error)
++
++**Common Issues:**
++1. **Worker stuck in "running"**: Check `logs/<id>.json` f├╝r Bob errors
++2. **Worktree conflicts**: Inspect `worktrees/<id>/` git status
++3. **Missing coins**: Verify Bob output format in logs
++4. **Dashboard not updating**: Check status-server.cjs running on :3001
++
++## Future Enhancements
++
++- [ ] Worker retry logic (auto-restart on error)
++- [ ] Dynamic worker scaling (spawn more if queue grows)
++- [ ] Distributed execution (multiple machines)
++- [ ] Real-time log streaming (WebSocket)
++- [ ] Historical run comparison
++- [ ] Cost optimization (coin usage analytics)
+
+---output---
+---output---
+
+ARCHITECTURE.md erfolgreich erstellt in C:\Users\tribe\bob-foreman\worktrees\architecture\
+
+Datei enth├ñlt:
+- System Overview mit Component Diagram
+- Detaillierte Beschreibung aller 5 Komponenten (foreman-build.ps1, spawn-worker.ps1, status-server.cjs, dashboard/index.html, Telegram MCP Bot)
+- Execution Flow Sequence Diagram
+- Worker State Machine Diagram
+- File Structure
+- Design Decisions
+- Performance Characteristics
+- Monitoring & Debugging Guide
+- Future Enhancements
+
+Alle Komponenten technisch dokumentiert mit Code-Snippets und Mermaid-Diagrammen.
+
+---output---
+{
+  "response": "",
+  "stats": {
+    "models": {
+      "premium": {
+        "api": {
+          "totalRequests": 2,
+          "totalErrors": 0,
+          "totalLatencyMs": 74504
+        },
+        "tokens": {
+          "prompt": 23916,
+          "candidates": 5184,
+          "total": 29100,
+          "cached": 9480,
+          "thoughts": 0,
+          "tool": 0
+        }
+      }
+    },
+    "tools": {
+      "totalCalls": 2,
+      "totalSuccess": 2,
+      "totalFail": 0,
+      "totalDurationMs": 52,
+      "totalDecisions": {
+        "accept": 0,
+        "reject": 0,
+        "modify": 0,
+        "auto_accept": 2
+      },
+      "byName": {
+        "write_to_file": {
+          "count": 1,
+          "success": 1,
+          "fail": 0,
+          "durationMs": 51,
+          "decisions": {
+            "accept": 0,
+            "reject": 0,
+            "modify": 0,
+            "auto_accept": 1
+          }
+        },
+        "attempt_completion": {
+          "count": 1,
+          "success": 1,
+          "fail": 0,
+          "durationMs": 1,
+          "decisions": {
+            "accept": 0,
+            "reject": 0,
+            "modify": 0,
+            "auto_accept": 1
+          }
+        }
+      }
+    },
+    "files": {
+      "totalLinesAdded": 473,
+      "totalLinesRemoved": 0
+    },
+    "budgetSpend": 3.17,
+    "maxBudget": 40,
+    "sessionCost": 0.07274900000000001
+  }
+}

@@ -1,0 +1,118 @@
+﻿node.exe : YOLO mode is enabled. All tool calls will be automatically approved.
+In C:\Users\tribe\AppData\Roaming\npm\bob.ps1:24 Zeichen:5
++     & "node$exe"  "$basedir/node_modules/bobshell/bundle/bob.js" $arg ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (YOLO mode is en...cally approved.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Failed to setup git notes configuration: Error: ENOTDIR: not a directory, mkdir 
+'C:\Users\tribe\bob-foreman\worktrees\v3-status-api\.git'
+    at async Module.mkdir (node:internal/fs/promises:859:10)
+    at async pqs (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:1825:106)
+    at async Promise.all (index 0)
+    at async T9n (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:1843:1043)
+    at async dnt.setup (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2150:2481)
+    at async R9n (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2169:446)
+    at async file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2169:1965
+    at async LZt (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:2169:1523)
+    at async j3.refreshAuth (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:3480:27997)
+    at async uBi (file:///C:/Users/tribe/AppData/Roaming/npm/node_modules/bobshell/bundle/bob.js:4636:1081) {
+  errno: -4052,
+  code: 'ENOTDIR',
+  syscall: 'mkdir',
+  path: 'C:\\Users\\tribe\\bob-foreman\\worktrees\\v3-status-api\\.git'
+}
+Error executing tool list_files: Error listing directory: ENOENT: no such file or directory, stat 
+'C:\Users\tribe\bob-foreman\worktrees\v3-status-api\.foreman\tasks'
+---output---
+ÔÿÉ Read current status-server.cjs structure completely
+ÔÿÉ Add /api/reviewer endpoint with proper markers
+ÔÿÉ Implement file reading for reviewer.json and reviewer-history.json
+ÔÿÉ Handle all edge cases (missing files, malformed JSON)
+ÔÿÉ Test server starts without errors
+ÔÿÉ Test /api/reviewer with no files (returns zeros)
+ÔÿÉ Create fake reviewer.json and test again
+ÔÿÉ Verify existing endpoint still works
+ÔÿÉ Commit to worker/v3-status-api branch
+---output---
+---output---
+Index: status-server.cjs
+===================================================================
+--- status-server.cjs	Current
++++ status-server.cjs	Proposed
+@@ -240,6 +240,67 @@
+   res.json(aliased);
+ });
+ 
++// === v3-status-api: BEGIN ===
++// Endpoint: GET /api/reviewer
++// Returns reviewer summary, lifetime stats, and intervention list
++app.get('/api/reviewer', (req, res) => {
++  const rootDir = process.cwd();
++  
++  // Initialize response with zeros
++  const response = {
++    summary: {
++      issues_found: 0,
++      auto_fixed: 0,
++      skipped: 0,
++      last_run_id: null
++    },
++    lifetime: {
++      total_runs: 0,
++      total_issues_found: 0,
++      total_auto_fixed: 0,
++      total_skipped: 0
++    },
++    interventions: []
++  };
++  
++  // Read reviewer.json (current run summary)
++  const reviewerFile = path.join(rootDir, '.foreman', 'tasks', 'reviewer.json');
++  const reviewerData = readJsonFile(reviewerFile);
++  
++  if (reviewerData) {
++    // Populate summary
++    if (reviewerData.summary) {
++      response.summary.issues_found = reviewerData.summary.issues_found || 0;
++      response.summary.auto_fixed = reviewerData.summary.auto_fixed || 0;
++      response.summary.skipped = reviewerData.summary.skipped || 0;
++    }
++    
++    // Set last_run_id
++    if (reviewerData.run_id) {
++      response.summary.last_run_id = reviewerData.run_id;
++    }
++    
++    // Populate interventions
++    if (Array.isArray(reviewerData.interventions)) {
++      response.interventions = reviewerData.interventions;
++    }
++  }
++  
++  // Read reviewer-history.json (lifetime stats)
++  const historyFile = path.join(rootDir, '.foreman', 'reviewer-history.json');
++  const historyData = readJsonFile(historyFile);
++  
++  if (historyData && historyData.lifetime) {
++    response.lifetime.total_runs = historyData.lifetime.total_runs || 0;
++    response.lifetime.total_issues_found = historyData.lifetime.total_issues_found || 0;
++    response.lifetime.total_auto_fixed = historyData.lifetime.total_auto_fixed || 0;
++    response.lifetime.total_skipped = historyData.lifetime.total_skipped || 0;
++  }
++  
++  res.json(response);
++});
++// === v3-status-api: END ===
++
+ // Start server
+ app.listen(PORT, () => {
+   console.log(`Status server running on port ${PORT}`);
+
+---output---
+---output---
+Background process started: "Start status server to verify no syntax errors" (pid: 72776)
+---output---
+---output---
+Command exited with code: 1
+---output---

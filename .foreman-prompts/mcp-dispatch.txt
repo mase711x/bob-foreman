@@ -1,0 +1,81 @@
+Mission: Create the foreman.dispatch MCP tool. This is one of three Wave 2 tools that consume the foundation built by Wave 1 (mcp-foundation, already merged to master). Your tool lets a caller (e.g. Bob IDE) tell Foreman to spawn N parallel Bob workers.
+
+Your scope (you may ONLY create this file, no others):
+  - foreman-mcp/tools/dispatch.js
+
+Files you must NOT touch:
+  - foreman-mcp/server.js (Wave 1's, frozen)
+  - foreman-mcp/lib/* (Wave 1's, frozen — read but never modify)
+  - foreman-mcp/package.json (Wave 1's, frozen)
+  - foreman-mcp/tools/status.js (parallel sibling — another worker owns it)
+  - foreman-mcp/tools/bauleiter.js (parallel sibling — another worker owns it)
+  - Anything outside foreman-mcp/
+
+Files you must read first:
+  - foreman-mcp/lib/contract.md (the API spec — your tool MUST conform)
+  - foreman-mcp/lib/runner.js (the helper you'll import — you call its runForemanBuild function)
+
+Tool specification:
+
+Name: foreman.dispatch
+Description (shown in Bob IDE): "Spawn N parallel Bob workers in isolated git worktrees to build features. Each worker is briefed via .foreman-prompts/<task_id>.txt. Returns immediately with a job_id and dashboard URL — does NOT wait for workers to finish. Use foreman.status to poll progress."
+
+inputSchema (JSON Schema):
+  type: object
+  required: ["project_description", "task_ids"]
+  properties:
+    project_description:
+      type: string
+      description: "Short summary of what the workers will build (used by Bob plan-mode to estimate sequential time)"
+    task_ids:
+      type: array
+      items: { type: string }
+      minItems: 1
+      description: "Worker task IDs. Each MUST have a corresponding .foreman-prompts/<id>.txt brief file already on disk."
+    max_coins_per_worker:
+      type: number
+      default: 3
+      minimum: 1
+      maximum: 10
+      description: "Max Bobcoins each worker may spend (hard cap). Default 3 — keeps a 4-worker dispatch under ~12 coins."
+    skip_estimate:
+      type: boolean
+      default: false
+      description: "If true, skip the Bob plan-mode estimate call (saves ~0.3 coins, useful for quick re-runs)."
+
+handler implementation:
+  - Import runForemanBuild from "../lib/runner.js"
+  - Validate that .foreman-prompts/<id>.txt exists for each task_id (use getRepoRoot() + fs.existsSync). If any missing, return isError with a clear message listing which IDs are missing.
+  - Call runForemanBuild({ projectDescription: project_description, taskIds: task_ids, maxCoinsPerWorker: max_coins_per_worker, skipEstimate: skip_estimate })
+  - Return content with a single text block formatted as:
+    ```
+    Foreman dispatched <N> worker(s).
+    Tasks: <id1>, <id2>, ...
+    Job ID: <job_id>
+    Dashboard: <dashboard_url>
+    Started: <started_at>
+    Coin cap: <max_coins_per_worker>/worker (max total: <N * max_coins_per_worker>)
+    
+    Workers are now running in parallel git worktrees. Use foreman.status to poll progress.
+    ```
+
+Constraints:
+  - Use ESM (import/export)
+  - No new dependencies — only Node built-ins (fs, path) plus what runner.js exports
+  - Do NOT spawn the powershell process yourself — always go through runForemanBuild
+  - Do NOT wait for workers — fire-and-return is the contract
+  - Do NOT execute or spawn any actual Bob workers. You are writing the TOOL CODE that LATER will be executed when called via MCP. Your worker script writes JS files; it must not run them or trigger any worker spawn.
+
+Verification before claiming done:
+  - foreman-mcp/tools/dispatch.js exists
+  - `node -c foreman-mcp/tools/dispatch.js` exits 0 (syntax check)
+  - The file exports `tool` as a named export (`export const tool = {...}`)
+  - The handler validates missing prompt files and returns isError when missing
+  - Total file length under 80 lines (keep it tight)
+
+Commit:
+  - Branch: worker/mcp-dispatch
+  - Message: feat: foreman.dispatch MCP tool
+  - One commit.
+
+Done = file exists, syntax check passes, exports `tool` matching the contract, validation logic is present.
