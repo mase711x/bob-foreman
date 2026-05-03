@@ -131,7 +131,7 @@ app.get('/dashboard/status.json', (req, res) => {
   
   // Read start_time
   const startTimeFile = path.join(rootDir, '.foreman', 'start_time.txt');
-  const startTimeStr = readTextFile(startTimeFile);
+  const startTimeStr = ((readTextFile(startTimeFile) || '').trim()) || null;
   
   // If no start_time, return empty state
   if (!startTimeStr) {
@@ -152,20 +152,20 @@ app.get('/dashboard/status.json', (req, res) => {
   
   // Read end_time
   const endTimeFile = path.join(rootDir, '.foreman', 'end_time.txt');
-  const endTimeStr = readTextFile(endTimeFile);
-  const endTime = endTimeStr ? new Date(endTimeStr) : null;
+  let   endTimeStr = ((readTextFile(endTimeFile) || '').trim()) || null;
+  let   endTime    = endTimeStr ? new Date(endTimeStr) : null;
   
   // Read estimate
   const estimateFile = path.join(rootDir, '.foreman', 'estimate.json');
   const estimate = readJsonFile(estimateFile);
   
   // Calculate elapsed_seconds
-  const currentTime = endTime || new Date();
-  const elapsed_seconds = Math.floor((currentTime - startTime) / 1000);
+  let   currentTime    = endTime || new Date();
+  let   elapsed_seconds = Math.floor((currentTime - startTime) / 1000);
   
   // Calculate is_active and is_done
-  const is_active = !endTime;
-  const is_done = !!endTime;
+  let   is_active = !endTime;
+  let   is_done   = !!endTime;
   
   // Get all task IDs and build workers array
   const taskIds = getAllTaskIds();
@@ -194,6 +194,19 @@ app.get('/dashboard/status.json', (req, res) => {
     };
   });
   
+  // v0.2.2: Auto-detect session completion when end_time.txt is missing.
+  // Persists end_time on first detection so later polls remain cheap.
+  if (!is_done && workers.length > 0 && workers.every(function(w){return w.status === 'done';})) {
+    const nowIso = new Date().toISOString();
+    try { fs.writeFileSync(endTimeFile, nowIso, 'utf-8'); } catch (e) {}
+    endTime = new Date(nowIso);
+    endTimeStr = nowIso;
+    currentTime = endTime;
+    elapsed_seconds = Math.floor((currentTime - startTime) / 1000);
+    is_active = false;
+    is_done = true;
+  }
+
   // Calculate totalCoins
   const totalCoins = workers.reduce((sum, worker) => sum + worker.coins, 0);
   
