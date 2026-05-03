@@ -111,7 +111,7 @@ Write-Host ''
 Write-Host '[5/5] DONE' -ForegroundColor Cyan
 $jobs | Receive-Job
 Write-Host ''
-Write-Host 'Dashboard: http://192.168.178.86:8765/dashboard.html'
+Write-Host 'Dashboard: http://localhost:3001/dashboard.html'
 
 # === v3-build-stage: BEGIN reviewer integration ===
 $reviewerPrompt = "$root\.foreman-prompts\reviewer.txt"
