@@ -5,7 +5,7 @@ param(
   [switch]$SkipEstimate
 )
 
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue'
 $root = 'C:\Users\tribe\bob-foreman'
 Set-Location $root
 
