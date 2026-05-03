@@ -25,7 +25,7 @@ function readJsonFile(filePath) {
 // Helper function to safely read text file
 function readTextFile(filePath) {
   try {
-    return fs.readFileSync(filePath, 'utf8').trim();
+    return fs.readFileSync(filePath, 'utf8').replace(/\\n$/g,'').replace(/\\r\\n$/g,'').trim();
   } catch (error) {
     return null;
   }
