@@ -233,6 +233,66 @@ app.get('/dashboard/status.json', (req, res) => {
 });
 
 // === v3-status-api: BEGIN ===
+// Endpoint: GET /dashboard/runs.json
+// Returns array of all run records, newest first
+app.get('/dashboard/runs.json', (req, res) => {
+  const rootDir = process.cwd();
+  const runsDir = path.join(rootDir, '.foreman', 'runs');
+  
+  const runs = [];
+  
+  try {
+    const jobIds = fs.readdirSync(runsDir);
+    
+    for (const jobId of jobIds) {
+      const runDir = path.join(runsDir, jobId);
+      const stats = fs.statSync(runDir);
+      if (!stats.isDirectory()) continue;
+      
+      // Read run files
+      const estimateData = readJsonFile(path.join(runDir, 'estimate.json'));
+      const startData = readJsonFile(path.join(runDir, 'start.json'));
+      const endData = readJsonFile(path.join(runDir, 'end.json'));
+      const tasksData = readJsonFile(path.join(runDir, 'tasks.json'));
+      
+      if (!startData || !startData.start_iso) continue;
+      
+      const startTime = new Date(startData.start_iso);
+      const endTime = endData && endData.end_iso ? new Date(endData.end_iso) : null;
+      const estimateSeconds = estimateData && estimateData.total_seconds ? estimateData.total_seconds : null;
+      
+      const elapsedSeconds = endTime 
+        ? Math.floor((endTime - startTime) / 1000)
+        : Math.floor((new Date() - startTime) / 1000);
+      
+      const savedSeconds = estimateSeconds && endTime
+        ? Math.max(estimateSeconds - elapsedSeconds, 0)
+        : null;
+      
+      runs.push({
+        job_id: jobId,
+        estimate_seconds: estimateSeconds,
+        start_iso: startData.start_iso,
+        end_iso: endData ? endData.end_iso : null,
+        tasks: tasksData && tasksData.task_ids ? tasksData.task_ids : [],
+        elapsed_seconds: elapsedSeconds,
+        saved_seconds: savedSeconds
+      });
+    }
+  } catch (error) {
+    // Directory doesn't exist or other error
+  }
+  
+  // Sort by start_iso descending (newest first)
+  runs.sort((a, b) => {
+    const timeA = new Date(a.start_iso).getTime();
+    const timeB = new Date(b.start_iso).getTime();
+    return timeB - timeA;
+  });
+  
+  res.json(runs);
+});
+
 // Endpoint: GET /api/reviewer
 // Returns reviewer summary, lifetime stats, and intervention list
 app.get('/api/reviewer', (req, res) => {

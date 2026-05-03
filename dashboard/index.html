@@ -495,6 +495,55 @@
             padding: 20px;
         }
 
+        .run-item {
+            background-color: #0a0a0f;
+            border-left: 3px solid #00f0ff;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+
+        .run-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .run-job-id {
+            color: #888;
+            font-family: 'Courier New', monospace;
+        }
+
+        .run-date {
+            color: #666;
+        }
+
+        .run-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 13px;
+            margin-top: 8px;
+        }
+
+        .run-stat {
+            color: #aaa;
+        }
+
+        .run-stat-label {
+            color: #666;
+            margin-right: 5px;
+        }
+
+        .run-stat-value {
+            color: #00f0ff;
+            font-weight: bold;
+        }
+
+        .run-stat-value.saved {
+            color: #51cf66;
+        }
+
         @media (max-width: 600px) {
             .hero-timers {
                 flex-direction: column;
@@ -547,6 +596,29 @@
         </div>
     </div>
 
+    <div class="issues-card" id="runsHistoryCard" style="display:none;">
+        <div class="issues-header">
+            📊 ALL RUNS HISTORY
+        </div>
+        <div class="issues-stats">
+            <div class="issues-stat-group">
+                <div class="issues-stat-label">Total Runs</div>
+                <div class="issues-stat-value" id="totalRuns">0</div>
+            </div>
+            <div class="issues-stat-group">
+                <div class="issues-stat-label">Total Saved</div>
+                <div class="issues-stat-value" id="totalSaved">0:00</div>
+                <div class="issues-stat-detail" id="totalSavedDetail">across all runs</div>
+            </div>
+        </div>
+        <div class="issues-toggle">
+            <button class="issues-toggle-btn" id="runsToggleBtn">▼ Show past runs</button>
+        </div>
+        <div class="issues-list" id="runsList">
+            <div class="issues-placeholder" id="runsPlaceholder">No completed runs yet</div>
+        </div>
+    </div>
+
     <div class="empty-state" id="emptyState">
         <div class="empty-state-icon">🤖</div>
         <div class="empty-state-title">No active project</div>
@@ -585,12 +657,14 @@
 
     <script>
         const API_URL = 'http://192.168.179.250:3001/dashboard/status.json';
+        const RUNS_API_URL = 'http://192.168.179.250:3001/dashboard/runs.json';
         const REVIEWER_API_URL = 'http://localhost:8765/api/reviewer';
         const POLL_INTERVAL = 1000;
         const REVIEWER_POLL_INTERVAL = 2000;
         const ACCENT_COLORS = ['#00f0ff', '#ff00ff', '#00ff80', '#ff8800'];
         
         let lastData = null;
+        let allRuns = [];
         let isOnline = false;
         let lastUpdateTime = null;
         let elapsedInterval = null;
@@ -658,12 +732,18 @@
             // Elapsed (updated by interval)
             updateElapsedTimer();
 
-            // Saved
+            // Saved - only show if estimate and elapsed are from same run
             const savedEl = document.getElementById('savedTime');
             const savedLabel = document.getElementById('savedLabel');
             const savedCard = savedEl.closest('.timer-card');
             
-            if (data.estimate_seconds != null && data.started_at) {
+            // Find current run in allRuns to verify same job_id
+            let currentRun = null;
+            if (data.started_at && allRuns.length > 0) {
+                currentRun = allRuns.find(r => r.start_iso === data.started_at);
+            }
+            
+            if (data.estimate_seconds != null && data.started_at && currentRun) {
                 const startTime = new Date(data.started_at).getTime();
                 const endTime = data.ended_at ? new Date(data.ended_at).getTime() : Date.now();
                 const elapsed = Math.floor((endTime - startTime) / 1000);
@@ -826,6 +906,85 @@
             lastUpdatedEl.textContent = `last updated: ${diff}s ago`;
         }
 
+        function updateRunsHistory(runs) {
+            const card = document.getElementById('runsHistoryCard');
+            const totalRunsEl = document.getElementById('totalRuns');
+            const totalSavedEl = document.getElementById('totalSaved');
+            const totalSavedDetailEl = document.getElementById('totalSavedDetail');
+            const runsList = document.getElementById('runsList');
+            const runsPlaceholder = document.getElementById('runsPlaceholder');
+            
+            if (runs.length === 0) {
+                card.style.display = 'none';
+                return;
+            }
+            
+            card.style.display = 'block';
+            
+            // Calculate totals
+            const completedRuns = runs.filter(r => r.end_iso && r.saved_seconds != null);
+            const totalSavedSeconds = completedRuns.reduce((sum, r) => sum + r.saved_seconds, 0);
+            
+            totalRunsEl.textContent = runs.length;
+            totalSavedEl.textContent = formatTime(totalSavedSeconds);
+            totalSavedDetailEl.textContent = `across ${completedRuns.length} completed runs`;
+            
+            // Build runs list
+            if (completedRuns.length === 0) {
+                runsPlaceholder.style.display = 'block';
+                runsPlaceholder.textContent = 'No completed runs yet';
+            } else {
+                runsPlaceholder.style.display = 'none';
+                
+                const runsHtml = completedRuns.map(run => {
+                    const startDate = new Date(run.start_iso);
+                    const dateStr = startDate.toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    
+                    return `
+                        <div class="run-item">
+                            <div class="run-header">
+                                <span class="run-job-id">${escapeHtml(run.job_id)}</span>
+                                <span class="run-date">${dateStr}</span>
+                            </div>
+                            <div class="run-stats">
+                                <div class="run-stat">
+                                    <span class="run-stat-label">Estimated:</span>
+                                    <span class="run-stat-value">${formatTime(run.estimate_seconds)}</span>
+                                </div>
+                                <div class="run-stat">
+                                    <span class="run-stat-label">Elapsed:</span>
+                                    <span class="run-stat-value">${formatTime(run.elapsed_seconds)}</span>
+                                </div>
+                                <div class="run-stat">
+                                    <span class="run-stat-label">Saved:</span>
+                                    <span class="run-stat-value saved">${formatTime(run.saved_seconds)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                runsList.innerHTML = runsHtml;
+            }
+        }
+
+        async function fetchRuns() {
+            try {
+                const response = await fetch(RUNS_API_URL);
+                if (!response.ok) throw new Error('Fetch failed');
+                
+                allRuns = await response.json();
+                updateRunsHistory(allRuns);
+            } catch (error) {
+                // Silently fail - runs history is optional
+            }
+        }
+
         async function fetchStatus() {
             try {
                 const response = await fetch(API_URL);
@@ -849,17 +1008,33 @@
             }
         }
 
+        // Toggle runs history
+        document.getElementById('runsToggleBtn').addEventListener('click', function() {
+            const runsList = document.getElementById('runsList');
+            const btn = this;
+            
+            if (runsList.classList.contains('expanded')) {
+                runsList.classList.remove('expanded');
+                btn.textContent = '▼ Show past runs';
+            } else {
+                runsList.classList.add('expanded');
+                btn.textContent = '▲ Hide past runs';
+            }
+        });
+
         // Start elapsed timer (updates every 100ms for smooth counting)
         elapsedInterval = setInterval(updateElapsedTimer, 100);
 
         // Update "last updated" timestamp every second
         setInterval(updateLastUpdated, 1000);
 
-        // Poll API
+        // Poll APIs
         setInterval(fetchStatus, POLL_INTERVAL);
+        setInterval(fetchRuns, POLL_INTERVAL);
         
         // Initial fetch
         fetchStatus();
+        fetchRuns();
     </script>
 </body>
 </html>
