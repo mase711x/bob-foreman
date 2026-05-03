@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bob Foreman Live</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #0a0a0f;
+            color: #ffffff;
+            font-family: Consolas, monospace;
+            padding: 20px;
+        }
+
+        .header {
+            margin-bottom: 30px;
+            padding: 20px;
+            border-bottom: 2px solid #333;
+            position: relative;
+        }
+
+        .connection-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #888;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #ff6b6b;
+        }
+
+        .status-dot.online {
+            background-color: #51cf66;
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.6;
+                transform: scale(1.2);
+            }
+        }
+
+        .title {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .hero-timers {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .timer-card {
+            background-color: #1a1a1f;
+            border-radius: 10px;
+            padding: 25px 40px;
+            text-align: center;
+            min-width: 180px;
+            border: 1px solid #333;
+            transition: all 0.3s ease;
+        }
+
+        .timer-label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .timer-value {
+            font-size: 42px;
+            font-weight: bold;
+            color: #00f0ff;
+        }
+
+        .timer-card.saved .timer-value {
+            color: #51cf66;
+        }
+
+        .timer-card.saved.negative .timer-value {
+            color: #ff6b6b;
+        }
+
+        .timer-card.saved.winner {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            border-color: #ffd700;
+            animation: winner-pulse 1.5s ease-in-out infinite;
+            transform: scale(1.05);
+        }
+
+        .timer-card.saved.winner .timer-label,
+        .timer-card.saved.winner .timer-value {
+            color: #000;
+        }
+
+        @keyframes winner-pulse {
+            0%, 100% {
+                box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            }
+            50% {
+                box-shadow: 0 0 40px rgba(255, 215, 0, 0.8);
+            }
+        }
+
+        .timer-card.muted .timer-value {
+            color: #444;
+        }
+
+        .hero-caption {
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .coin-summary {
+            text-align: center;
+            font-size: 16px;
+            color: #888;
+            margin-top: 15px;
+        }
+
+        .coin-summary .coin-value {
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 20px;
+        }
+
+        .empty-state {
+            background-color: #1a1a1f;
+            border: 2px dashed #333;
+            border-radius: 10px;
+            padding: 60px 40px;
+            text-align: center;
+            margin: 40px auto;
+            max-width: 800px;
+            display: none;
+        }
+
+        .empty-state.show {
+            display: block;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        .empty-state-title {
+            font-size: 24px;
+            margin-bottom: 15px;
+            color: #888;
+        }
+
+        .empty-state-hint {
+            font-size: 14px;
+            color: #666;
+            background-color: #0a0a0f;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin-top: 20px;
+        }
+
+        .workers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .worker-card {
+            background-color: #1a1a1f;
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 4px solid;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .worker-card.accent-0 {
+            border-left-color: #00f0ff;
+        }
+
+        .worker-card.accent-1 {
+            border-left-color: #ff00ff;
+        }
+
+        .worker-card.accent-2 {
+            border-left-color: #00ff80;
+        }
+
+        .worker-card.accent-3 {
+            border-left-color: #ff8800;
+        }
+
+        .worker-card.done-flash {
+            animation: done-flash 0.6s ease-out;
+        }
+
+        @keyframes done-flash {
+            0% {
+                background-color: #1a1a1f;
+            }
+            50% {
+                background-color: #2a4a2f;
+            }
+            100% {
+                background-color: #1a1a1f;
+            }
+        }
+
+        .worker-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .task-id {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .status-badge {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-queued {
+            background-color: #666;
+        }
+
+        .status-running {
+            background-color: #00f0ff;
+            color: #000;
+        }
+
+        .status-running::before {
+            content: '●';
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .status-done {
+            background-color: #51cf66;
+            color: #000;
+        }
+
+        .status-done::before {
+            content: '✓';
+        }
+
+        .status-error {
+            background-color: #ff6b6b;
+        }
+
+        .status-error::before {
+            content: '✗';
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        .log-box {
+            background-color: #0a0a0f;
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 10px;
+            height: 150px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            font-size: 11px;
+            line-height: 1.5;
+            font-family: 'Courier New', monospace;
+        }
+
+        .log-line {
+            margin-bottom: 2px;
+            word-wrap: break-word;
+            color: #aaa;
+        }
+
+        .coin-counter {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            color: #888;
+        }
+
+        .coin-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        .last-updated {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            font-size: 10px;
+            color: #444;
+            background-color: #1a1a1f;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+
+        .issues-card {
+            background-color: #1a1a1f;
+            border-radius: 10px;
+            padding: 25px;
+            margin-top: 30px;
+            border: 1px solid #333;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .issues-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #00f0ff;
+        }
+
+        .issues-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            gap: 40px;
+        }
+
+        .issues-stat-group {
+            text-align: center;
+            flex: 1;
+        }
+
+        .issues-stat-label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .issues-stat-value {
+            font-size: 42px;
+            font-weight: bold;
+            color: #00f0ff;
+            transition: all 0.3s ease;
+        }
+
+        .issues-stat-value.pulse {
+            animation: value-pulse 0.6s ease-out;
+        }
+
+        @keyframes value-pulse {
+            0% {
+                transform: scale(1);
+                color: #00f0ff;
+            }
+            50% {
+                transform: scale(1.15);
+                color: #51cf66;
+                text-shadow: 0 0 20px rgba(81, 207, 102, 0.8);
+            }
+            100% {
+                transform: scale(1);
+                color: #00f0ff;
+            }
+        }
+
+        .issues-stat-detail {
+            font-size: 13px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .issues-toggle {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .issues-toggle-btn {
+            background: none;
+            border: 1px solid #333;
+            color: #888;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: Consolas, monospace;
+            font-size: 13px;
+            transition: all 0.3s ease;
+        }
+
+        .issues-toggle-btn:hover {
+            border-color: #00f0ff;
+            color: #00f0ff;
+        }
+
+        .issues-list {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .issues-list.expanded {
+            max-height: 400px;
+            overflow-y: auto;
+            border-top: 1px solid #333;
+            padding-top: 20px;
+        }
+
+        .intervention-item {
+            background-color: #0a0a0f;
+            border-left: 3px solid #00f0ff;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+
+        .intervention-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .intervention-commit {
+            color: #888;
+            font-family: 'Courier New', monospace;
+        }
+
+        .intervention-file {
+            color: #00f0ff;
+        }
+
+        .intervention-issue {
+            color: #ff6b6b;
+            margin-bottom: 5px;
+            font-size: 13px;
+        }
+
+        .intervention-fix {
+            color: #51cf66;
+            font-size: 13px;
+        }
+
+        .issues-placeholder {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            padding: 20px;
+        }
+
+        .run-item {
+            background-color: #0a0a0f;
+            border-left: 3px solid #00f0ff;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+
+        .run-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .run-job-id {
+            color: #888;
+            font-family: 'Courier New', monospace;
+        }
+
+        .run-date {
+            color: #666;
+        }
+
+        .run-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 13px;
+            margin-top: 8px;
+        }
+
+        .run-stat {
+            color: #aaa;
+        }
+
+        .run-stat-label {
+            color: #666;
+            margin-right: 5px;
+        }
+
+        .run-stat-value {
+            color: #00f0ff;
+            font-weight: bold;
+        }
+
+        .run-stat-value.saved {
+            color: #51cf66;
+        }
+
+        @media (max-width: 600px) {
+            .hero-timers {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .timer-card {
+                min-width: 100%;
+            }
+
+            .workers-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .issues-stats {
+                flex-direction: column;
+                gap: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="connection-indicator">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="statusText">offline</span>
+        </div>
+
+        <div class="title">Bob Foreman Live</div>
+        
+        <div class="hero-timers">
+            <div class="timer-card">
+                <div class="timer-label">Estimated</div>
+                <div class="timer-value" id="estimatedTime">—</div>
+            </div>
+            <div class="timer-card">
+                <div class="timer-label">Elapsed</div>
+                <div class="timer-value" id="elapsedTime">0:00</div>
+            </div>
+            <div class="timer-card saved">
+                <div class="timer-label" id="savedLabel">Saved</div>
+                <div class="timer-value" id="savedTime">—</div>
+            </div>
+        </div>
+
+        <div class="hero-caption">Bob's estimate (sequential) vs actual parallel runtime</div>
+
+        <div class="coin-summary">
+            💰 <span class="coin-value" id="totalCoins">0.00</span> coins used
+        </div>
+    </div>
+
+    <div class="issues-card" id="runsHistoryCard" style="display:none;">
+        <div class="issues-header">
+            📊 ALL RUNS HISTORY
+        </div>
+        <div class="issues-stats">
+            <div class="issues-stat-group">
+                <div class="issues-stat-label">Total Runs</div>
+                <div class="issues-stat-value" id="totalRuns">0</div>
+            </div>
+            <div class="issues-stat-group">
+                <div class="issues-stat-label">Total Saved</div>
+                <div class="issues-stat-value" id="totalSaved">0:00</div>
+                <div class="issues-stat-detail" id="totalSavedDetail">across all runs</div>
+            </div>
+        </div>
+        <div class="issues-toggle">
+            <button class="issues-toggle-btn" id="runsToggleBtn">▼ Show past runs</button>
+        </div>
+        <div class="issues-list" id="runsList">
+            <div class="issues-placeholder" id="runsPlaceholder">No completed runs yet</div>
+        </div>
+    </div>
+
+    <div class="empty-state" id="emptyState">
+        <div class="empty-state-icon">🤖</div>
+        <div class="empty-state-title">No active project</div>
+        <div class="empty-state-hint">
+            Start with: .\scripts\foreman-build.ps1 -ProjectDescription "..."
+        </div>
+    </div>
+
+    <div class="workers-grid" id="workersGrid"></div>
+
+    <div class="issues-card" id="issuesCard">
+        <div class="issues-header">
+            🛠️ ISSUES AUTO-FIXED
+        </div>
+        <div class="issues-stats">
+            <div class="issues-stat-group">
+                <div class="issues-stat-label">This run</div>
+                <div class="issues-stat-value" id="issuesThisRun">0</div>
+                <div class="issues-stat-detail" id="issuesThisRunDetail">fixed of 0 found</div>
+            </div>
+            <div class="issues-stat-group">
+                <div class="issues-stat-label">Lifetime</div>
+                <div class="issues-stat-value" id="issuesLifetime">0</div>
+                <div class="issues-stat-detail" id="issuesLifetimeDetail">across 0 runs</div>
+            </div>
+        </div>
+        <div class="issues-toggle">
+            <button class="issues-toggle-btn" id="issuesToggleBtn">▼ Show interventions</button>
+        </div>
+        <div class="issues-list" id="issuesList">
+            <div class="issues-placeholder" id="issuesPlaceholder">No reviewer runs yet</div>
+        </div>
+    </div>
+
+    <div class="last-updated" id="lastUpdated">last updated: never</div>
+
+    <script>
+        const API_URL = 'http://192.168.179.250:3001/dashboard/status.json';
+        const RUNS_API_URL = 'http://192.168.179.250:3001/dashboard/runs.json';
+        const REVIEWER_API_URL = 'http://localhost:8765/api/reviewer';
+        const POLL_INTERVAL = 1000;
+        const REVIEWER_POLL_INTERVAL = 2000;
+        const ACCENT_COLORS = ['#00f0ff', '#ff00ff', '#00ff80', '#ff8800'];
+        
+        let lastData = null;
+        let allRuns = [];
+        let isOnline = false;
+        let lastUpdateTime = null;
+        let elapsedInterval = null;
+        let workerDoneStates = {};
+        let lastReviewerData = null;
+        let issuesExpanded = false;
+
+        function formatTime(seconds) {
+            if (seconds == null || isNaN(seconds)) return '—';
+            
+            const absSeconds = Math.abs(seconds);
+            const minutes = Math.floor(absSeconds / 60);
+            const secs = Math.floor(absSeconds % 60);
+            const sign = seconds < 0 ? '-' : '';
+            
+            return `${sign}${minutes}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function updateConnectionStatus(online) {
+            if (isOnline === online) return;
+            isOnline = online;
+            
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+            
+            if (online) {
+                dot.classList.add('online');
+                text.textContent = 'live';
+            } else {
+                dot.classList.remove('online');
+                text.textContent = 'offline';
+            }
+        }
+
+        function updateElapsedTimer() {
+            if (!lastData || !lastData.started_at) {
+                const elapsedEl = document.getElementById('elapsedTime');
+                const timerCard = elapsedEl.closest('.timer-card');
+                elapsedEl.textContent = '0:00';
+                timerCard.classList.add('muted');
+                return;
+            }
+
+            const startTime = new Date(lastData.started_at).getTime();
+            const endTime = lastData.ended_at ? new Date(lastData.ended_at).getTime() : Date.now();
+            const elapsed = Math.floor((endTime - startTime) / 1000);
+            
+            const elapsedEl = document.getElementById('elapsedTime');
+            const timerCard = elapsedEl.closest('.timer-card');
+            
+            if (elapsedEl.textContent !== formatTime(elapsed)) {
+                elapsedEl.textContent = formatTime(elapsed);
+                timerCard.classList.remove('muted');
+            }
+        }
+
+        function updateHeroTimers(data) {
+            // Estimated
+            const estimatedEl = document.getElementById('estimatedTime');
+            const estimatedValue = data.estimate_seconds != null ? formatTime(data.estimate_seconds) : '—';
+            if (estimatedEl.textContent !== estimatedValue) {
+                estimatedEl.textContent = estimatedValue;
+            }
+
+            // Elapsed (updated by interval)
+            updateElapsedTimer();
+
+            // Saved - only show if estimate and elapsed are from same run
+            const savedEl = document.getElementById('savedTime');
+            const savedLabel = document.getElementById('savedLabel');
+            const savedCard = savedEl.closest('.timer-card');
+            
+            // Find current run in allRuns to verify same job_id
+            let currentRun = null;
+            if (data.started_at && allRuns.length > 0) {
+                currentRun = allRuns.find(r => r.start_iso === data.started_at);
+            }
+            
+            if (data.estimate_seconds != null && data.started_at && currentRun) {
+                const startTime = new Date(data.started_at).getTime();
+                const endTime = data.ended_at ? new Date(data.ended_at).getTime() : Date.now();
+                const elapsed = Math.floor((endTime - startTime) / 1000);
+                const saved = data.estimate_seconds - elapsed;
+                
+                const savedValue = formatTime(saved);
+                if (savedEl.textContent !== savedValue) {
+                    savedEl.textContent = savedValue;
+                }
+
+                savedCard.classList.remove('muted');
+                
+                if (saved < 0) {
+                    savedCard.classList.add('negative');
+                    savedCard.classList.remove('winner');
+                } else {
+                    savedCard.classList.remove('negative');
+                }
+
+                if (data.is_done && saved > 0) {
+                    savedCard.classList.add('winner');
+                    const percentage = Math.round((saved / data.estimate_seconds) * 100);
+                    const minutes = Math.floor(saved / 60);
+                    const secs = saved % 60;
+                    savedLabel.textContent = `🏆 You saved ${minutes}m ${secs}s (${percentage}% faster)`;
+                } else {
+                    savedCard.classList.remove('winner');
+                    savedLabel.textContent = 'Saved';
+                }
+            } else {
+                if (savedEl.textContent !== '—') {
+                    savedEl.textContent = '—';
+                }
+                savedCard.classList.add('muted');
+                savedCard.classList.remove('negative', 'winner');
+                savedLabel.textContent = 'Saved';
+            }
+        }
+
+        function updateWorkers(workers) {
+            const grid = document.getElementById('workersGrid');
+            
+            // Calculate total coins
+            let totalCoins = 0;
+            workers.forEach(w => {
+                totalCoins += w.coins_used || 0;
+            });
+            
+            const totalCoinsEl = document.getElementById('totalCoins');
+            const totalCoinsValue = totalCoins.toFixed(2);
+            if (totalCoinsEl.textContent !== totalCoinsValue) {
+                totalCoinsEl.textContent = totalCoinsValue;
+            }
+
+            // Update worker cards
+            const existingCards = grid.querySelectorAll('.worker-card');
+            const existingCount = existingCards.length;
+            
+            // Remove excess cards
+            if (existingCount > workers.length) {
+                for (let i = workers.length; i < existingCount; i++) {
+                    existingCards[i].remove();
+                }
+            }
+
+            // Update or create cards
+            workers.forEach((worker, index) => {
+                let card = existingCards[index];
+                
+                if (!card) {
+                    card = document.createElement('div');
+                    card.className = `worker-card accent-${index % 4}`;
+                    card.innerHTML = `
+                        <div class="worker-header">
+                            <div class="task-id"></div>
+                            <div class="status-badge"></div>
+                        </div>
+                        <div class="log-box"></div>
+                        <div class="coin-counter">
+                            <span>💰 Coins:</span>
+                            <span class="coin-value"></span>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                }
+
+                // Update task ID
+                const taskIdEl = card.querySelector('.task-id');
+                if (taskIdEl.textContent !== worker.id) {
+                    taskIdEl.textContent = worker.id;
+                }
+
+                // Update status badge
+                const statusBadge = card.querySelector('.status-badge');
+                const statusClass = `status-${worker.status}`;
+                if (!statusBadge.classList.contains(statusClass)) {
+                    statusBadge.className = `status-badge ${statusClass}`;
+                    statusBadge.textContent = worker.status;
+                }
+
+                // Flash animation on done
+                if (worker.status === 'done' && !workerDoneStates[worker.id]) {
+                    card.classList.add('done-flash');
+                    setTimeout(() => card.classList.remove('done-flash'), 600);
+                    workerDoneStates[worker.id] = true;
+                } else if (worker.status !== 'done') {
+                    workerDoneStates[worker.id] = false;
+                }
+
+                // Update logs
+                const logBox = card.querySelector('.log-box');
+                const logs = worker.log_tail || [];
+                const lastLogs = logs.slice(-5);
+                const logsHtml = lastLogs.map(log => 
+                    `<div class="log-line">${escapeHtml(log)}</div>`
+                ).join('');
+                
+                if (logBox.innerHTML !== logsHtml) {
+                    logBox.innerHTML = logsHtml;
+                    logBox.scrollTop = logBox.scrollHeight;
+                }
+
+                // Update coins
+                const coinValueEl = card.querySelector('.coin-value');
+                const coinValue = (worker.coins_used || 0).toFixed(2);
+                if (coinValueEl.textContent !== coinValue) {
+                    coinValueEl.textContent = coinValue;
+                }
+            });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function updateEmptyState(data) {
+            const emptyState = document.getElementById('emptyState');
+            const workersGrid = document.getElementById('workersGrid');
+            
+            const isEmpty = (!data.started_at && (!data.workers || data.workers.length === 0));
+            
+            if (isEmpty) {
+                emptyState.classList.add('show');
+                workersGrid.style.display = 'none';
+            } else {
+                emptyState.classList.remove('show');
+                workersGrid.style.display = 'grid';
+            }
+        }
+
+        function updateLastUpdated() {
+            if (!lastUpdateTime) return;
+            
+            const now = Date.now();
+            const diff = Math.floor((now - lastUpdateTime) / 1000);
+            
+            const lastUpdatedEl = document.getElementById('lastUpdated');
+            lastUpdatedEl.textContent = `last updated: ${diff}s ago`;
+        }
+
+        function updateRunsHistory(runs) {
+            const card = document.getElementById('runsHistoryCard');
+            const totalRunsEl = document.getElementById('totalRuns');
+            const totalSavedEl = document.getElementById('totalSaved');
+            const totalSavedDetailEl = document.getElementById('totalSavedDetail');
+            const runsList = document.getElementById('runsList');
+            const runsPlaceholder = document.getElementById('runsPlaceholder');
+            
+            if (runs.length === 0) {
+                card.style.display = 'none';
+                return;
+            }
+            
+            card.style.display = 'block';
+            
+            // Calculate totals
+            const completedRuns = runs.filter(r => r.end_iso && r.saved_seconds != null);
+            const totalSavedSeconds = completedRuns.reduce((sum, r) => sum + r.saved_seconds, 0);
+            
+            totalRunsEl.textContent = runs.length;
+            totalSavedEl.textContent = formatTime(totalSavedSeconds);
+            totalSavedDetailEl.textContent = `across ${completedRuns.length} completed runs`;
+            
+            // Build runs list
+            if (completedRuns.length === 0) {
+                runsPlaceholder.style.display = 'block';
+                runsPlaceholder.textContent = 'No completed runs yet';
+            } else {
+                runsPlaceholder.style.display = 'none';
+                
+                const runsHtml = completedRuns.map(run => {
+                    const startDate = new Date(run.start_iso);
+                    const dateStr = startDate.toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    
+                    return `
+                        <div class="run-item">
+                            <div class="run-header">
+                                <span class="run-job-id">${escapeHtml(run.job_id)}</span>
+                                <span class="run-date">${dateStr}</span>
+                            </div>
+                            <div class="run-stats">
+                                <div class="run-stat">
+                                    <span class="run-stat-label">Estimated:</span>
+                                    <span class="run-stat-value">${formatTime(run.estimate_seconds)}</span>
+                                </div>
+                                <div class="run-stat">
+                                    <span class="run-stat-label">Elapsed:</span>
+                                    <span class="run-stat-value">${formatTime(run.elapsed_seconds)}</span>
+                                </div>
+                                <div class="run-stat">
+                                    <span class="run-stat-label">Saved:</span>
+                                    <span class="run-stat-value saved">${formatTime(run.saved_seconds)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                runsList.innerHTML = runsHtml;
+            }
+        }
+
+        async function fetchRuns() {
+            try {
+                const response = await fetch(RUNS_API_URL);
+                if (!response.ok) throw new Error('Fetch failed');
+                
+                allRuns = await response.json();
+                updateRunsHistory(allRuns);
+            } catch (error) {
+                // Silently fail - runs history is optional
+            }
+        }
+
+        async function fetchStatus() {
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) throw new Error('Fetch failed');
+                
+                const data = await response.json();
+                
+                updateConnectionStatus(true);
+                lastData = data;
+                lastUpdateTime = Date.now();
+                
+                updateHeroTimers(data);
+                updateEmptyState(data);
+                
+                if (data.workers && data.workers.length > 0) {
+                    updateWorkers(data.workers);
+                }
+
+            } catch (error) {
+                updateConnectionStatus(false);
+            }
+        }
+
+        // Toggle runs history
+        document.getElementById('runsToggleBtn').addEventListener('click', function() {
+            const runsList = document.getElementById('runsList');
+            const btn = this;
+            
+            if (runsList.classList.contains('expanded')) {
+                runsList.classList.remove('expanded');
+                btn.textContent = '▼ Show past runs';
+            } else {
+                runsList.classList.add('expanded');
+                btn.textContent = '▲ Hide past runs';
+            }
+        });
+
+        // Start elapsed timer (updates every 100ms for smooth counting)
+        elapsedInterval = setInterval(updateElapsedTimer, 100);
+
+        // Update "last updated" timestamp every second
+        setInterval(updateLastUpdated, 1000);
+
+        // Poll APIs
+        setInterval(fetchStatus, POLL_INTERVAL);
+        setInterval(fetchRuns, POLL_INTERVAL);
+        
+        // Initial fetch
+        fetchStatus();
+        fetchRuns();
+    </script>
+</body>
+</html>

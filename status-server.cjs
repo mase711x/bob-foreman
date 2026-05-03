@@ -12,6 +12,11 @@ app.use((req, res, next) => {
   next();
 });
 
+// Serve dashboard.html
+app.get('/dashboard.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dashboard.html'));
+});
+
 // Helper function to safely read JSON file
 function readJsonFile(filePath) {
   try {

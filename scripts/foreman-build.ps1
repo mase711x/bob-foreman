@@ -6,7 +6,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$root = 'C:\Users\tribe\bob-foreman'
+$root = $PSScriptRoot | Split-Path -Parent
 Set-Location $root
 
 # Generate job_id: yyyyMMdd-HHmmss-<4randomchars>
