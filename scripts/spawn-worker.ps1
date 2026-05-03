@@ -6,7 +6,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$root = 'C:\Users\tribe\bob-foreman'
+$root = $PSScriptRoot | Split-Path -Parent
 $logDir = "$root\logs"
 $tasksDir = "$root\.foreman\tasks"
 $worktreePath = "$root\worktrees\$TASK_ID"
