@@ -5,9 +5,12 @@ param(
   [switch]$SkipEstimate
 )
 
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue'
 $root = 'C:\Users\tribe\bob-foreman'
 Set-Location $root
+
+$timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+$logFile = "$root\foreman-wave-$timestamp.log"
 
 Write-Host ''
 Write-Host 'FOREMAN BUILD' -ForegroundColor Cyan
@@ -28,19 +31,32 @@ if (-not $SkipEstimate) {
     Write-Host '[1/5] Asking Bob for sequential estimate...' -ForegroundColor Yellow
     $estimatePrompt = "You are estimating SEQUENTIAL time for ONE Bob to do these tasks ONE AFTER ANOTHER (not parallel). Project: $ProjectDescription. Tasks: $($TaskIds -join ', '). Per task: ~30s setup + 2-5min coding + tests/docs if applicable. Add 20% buffer. Be honest, no overpromising. Respond ONLY with valid JSON: {\`"total_seconds\`": NUMBER}"
     
-    $estimateRaw = & bob $estimatePrompt --trust --yolo `
-        --instance-id ibm-coding-challenge-uat `
-        --team-id ibm-hackathon-6 `
-        --chat-mode plan `
-        --max-coins 1 `
-        --output-format json 2>&1 | Out-String
-    
-    $match = [regex]::Match($estimateRaw, '\{[^{}]*total_seconds[^{}]*\}')
-    if ($match.Success) {
-        $match.Value | Set-Content "$root\.foreman\estimate.json" -NoNewline
-        Write-Host "    Estimate written: $($match.Value)" -ForegroundColor Green
-    } else {
-        Write-Host '    Could not parse estimate, fallback to 600s' -ForegroundColor Yellow
+    try {
+        $estimateRaw = & bob $estimatePrompt --trust --yolo `
+            --instance-id ibm-coding-challenge-uat `
+            --team-id ibm-hackathon-6 `
+            --chat-mode plan `
+            --max-coins 1 `
+            --output-format json 2>&1 | Out-String
+        
+        "=== Estimate phase ===" | Add-Content $logFile
+        $estimateRaw | Add-Content $logFile
+        
+        if ($LASTEXITCODE -ne 0) {
+            throw "bob estimate failed with exit code $LASTEXITCODE"
+        }
+        
+        $match = [regex]::Match($estimateRaw, '\{[^{}]*total_seconds[^{}]*\}')
+        if ($match.Success) {
+            $match.Value | Set-Content "$root\.foreman\estimate.json" -NoNewline
+            Write-Host "    Estimate written: $($match.Value)" -ForegroundColor Green
+        } else {
+            Write-Host '    Could not parse estimate, fallback to 600s' -ForegroundColor Yellow
+            '{"total_seconds": 600}' | Set-Content "$root\.foreman\estimate.json" -NoNewline
+        }
+    } catch {
+        Write-Host "    Estimate failed: $_" -ForegroundColor Red
+        Write-Host '    Using fallback: 600s' -ForegroundColor Yellow
         '{"total_seconds": 600}' | Set-Content "$root\.foreman\estimate.json" -NoNewline
     }
 } elseif (-not (Test-Path "$root\.foreman\estimate.json")) {
